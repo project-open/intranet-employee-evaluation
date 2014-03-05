@@ -9,23 +9,26 @@
     <inherit-templates-p>t</inherit-templates-p>
     <auto-mount>intranet-employee-evaluation</auto-mount>
 
-    <version name="0.4d" url="http://openacs.org/repository/download/apm/intranet-employee-evaluation-0.4d.apm">
+    <version name="0.5d" url="http://openacs.org/repository/download/apm/intranet-employee-evaluation-0.5d.apm">
         <owner url="mailto:info@project-open.com">Project Open Business Solutions S.L.</owner>
         <summary>Allows to conduct Employee Performance Evaluations</summary>
         <vendor url="www.project-open.org">Project Open Business Solutions S.L.</vendor>
         <description format="text/html">Allows to conduct Employee Performance Evaluations</description>
+
         <maturity>0</maturity>
 
-        <provides url="intranet-employee-evaluation" version="0.1d"/>
+        <provides url="intranet-employee-evaluation" version="0.5d"/>
+
 	<requires url="intranet-workflow" version="4.0.5.0.0"/>
 	<requires url="simple-survey" version="0.4"/>
 	<requires url="intranet-simple-survey" version="4.0.5.0.0"/>
 
         <callbacks></callbacks>
         <parameters>
-	  <parameter datatype="string"  min_n_values="1"  max_n_values="1"  name="WorkflowKey"  default="employee_evaluation" description="Key of the Workflow to be used for the Employee Evaluation"/> 
-	  <parameter datatype="string"  min_n_values="1"  max_n_values="1"  name="CurrentEmployeeEvaluationProjectId"  default="0" description="Project Id of the current Employee Evaluation Project"/> 
-	  <parameter datatype="string"  min_n_values="1"  max_n_values="1"  name="SurveyName"  default="Employee Evaluation Test" description="Name of survey to be used for Employee Evaluation"/> 
+	  <parameter datatype="string"  min_n_values="1"  max_n_values="1"  name="WorkflowKey"  default="employee_evaluation" description="Key of the Workflow to be used for the current 'Employee Evaluation'"/> 
+	  <parameter datatype="string"  min_n_values="1"  max_n_values="1"  name="CurrentEmployeeEvaluationProjectId"  default="0" description="Project Id of the current 'Employee Evaluation Project'"/> 
+	  <parameter datatype="string"  min_n_values="1"  max_n_values="1"  name="SurveyName"  default="Employee Evaluation Test" description="Name of survey to be used for current 'Employee Evaluation'"/> 
+	  <parameter datatype="string"  min_n_values="1"  max_n_values="1"  name="TransitionNamePrinting"  default="" description="Name of current 'Workflow Transition' containing all survey questions to be printed."/>
         </parameters>
     </version>
 </package>
