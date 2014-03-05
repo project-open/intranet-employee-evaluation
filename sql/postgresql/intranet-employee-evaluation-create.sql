@@ -263,7 +263,7 @@ ALTER TABLE im_employee_evaluation_config ADD CONSTRAINT im_employee_evaluation_
 -- Create Plugins
 -- --------------------------------------------------------------
 
--- USer Component Plugin that provides access to past and current EE 
+-- Employee Component Plugin that provides access to past and current EE 
 CREATE OR REPLACE FUNCTION inline_0 ()
 RETURNS INTEGER AS $BODY$
 
@@ -279,13 +279,13 @@ begin
 		null,                           -- creation_user
 		null,                           -- creation_ip
         	null,                           -- context_id
-        	'Employee Evaluation',          -- plugin_name
+        	'Employee Evaluation', -- plugin_name
         	'intranet-employee-evaluation', -- package_name
         	'left',                        -- location
         	'/intranet-employee-evaluation/index', -- page_url
         	null,                           -- view_name
         	5,                              -- sort_order
-        	'im_employee_evaluation_user_component $current_user_id' -- component_tcl
+        	'im_employee_evaluation_employee_component $current_user_id' -- component_tcl
 	) into v_plugin_id;
 
 	select group_id into v_employees from groups where group_name = 'Employees';
@@ -296,6 +296,42 @@ begin
 end;$BODY$ LANGUAGE 'plpgsql';
 SELECT inline_0 ();
 DROP FUNCTION inline_0 ();
+
+
+-- Employee Component Plugin that provides access to past and current EE
+CREATE OR REPLACE FUNCTION inline_0 ()
+RETURNS INTEGER AS $BODY$
+
+declare
+        v_count               integer;
+        v_plugin_id           integer;
+        v_employees           integer;
+begin
+        SELECT  im_component_plugin__new (
+                null,                           -- plugin_id
+                'acs_object',                   -- object_type
+                now(),                          -- creation_date
+                null,                           -- creation_user
+                null,                           -- creation_ip
+                null,                           -- context_id
+                'Employee Evaluation for Supervisors',          -- plugin_name
+                'intranet-employee-evaluation', -- package_name
+                'right',                        -- location
+                '/intranet-employee-evaluation/index', -- page_url
+                null,                           -- view_name
+                10,                              -- sort_order
+                'im_employee_evaluation_supervisor_component $current_user_id' -- component_tcl
+        ) into v_plugin_id;
+
+        select group_id into v_employees from groups where group_name = 'Employees';
+        PERFORM im_grant_permission(v_plugin_id, v_employees, 'read');
+
+        return 0;
+
+end;$BODY$ LANGUAGE 'plpgsql';
+SELECT inline_0 ();
+DROP FUNCTION inline_0 ();
+
 
 -- Statistics
 CREATE OR REPLACE FUNCTION inline_0 ()
