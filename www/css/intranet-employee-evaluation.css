@@ -1,0 +1,46 @@
+textarea.ee-survey-question {
+    font-size:12px; 
+    width:30em; 
+    padding:0; 
+    margin:0;
+    height: 140px; 
+}
+
+ul.ee-survey-question {
+    margin: 0;
+    padding-left: 2em;
+    padding-right: 0em;
+    padding-top: 4px;
+}
+
+table.ee-survey-question-outer-table {
+    width:1280px;
+    border-spacing: 10px;
+    border-collapse: separate;
+}
+
+table.ee-survey-question-outer-table-compact {
+    width:800px;
+    border-spacing: 10px;
+    border-collapse: separate;
+}
+
+
+table.ee-survey-question-inner-table {
+    border-spacing: 10px;
+    border-collapse: separate;
+}
+
+
+table.ee-survey-question-type-two {
+    border-spacing: 5px;
+    border-collapse: separate;
+}
+
+span.ee-survey-question-main-question-text  {
+    // font-weight: bold;
+}
+
+span.ee-survey-question-title-type-1 {
+    font-weight: bold;
+}
