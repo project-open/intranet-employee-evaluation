@@ -556,20 +556,43 @@ proc_doc im_employee_evaluation_question_display {
 }
 
 
-ad_proc -public im_employee_evaluation_user_component {
+ad_proc -public im_employee_evaluation_supervisor_component {
     current_user_id
 } {
     Provides links and status information for Employee Evaluation
 } {
 
+    # Check if current user is supervisor of an employee
+    set number_direct_reports [db_string get_number_direct_reports "select count(*) from im_employees where supervisor_id = :current_user_id" -default 0]
+    if { 0 == $number_direct_reports } {return "" }
+
     set project_id [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CurrentEmployeeEvaluationProjectId" -default 0]
     set survey_name [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "SurveyName" -default ""] 
     set name_order [parameter::get -package_id [apm_package_id_from_key intranet-core] -parameter "NameOrder" -default 1]
+    set transition_name_printing [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "TransitionNamePrinting" -default ""]
 
     set html_lines ""
+    set deadline_employee_evaluation ""
+    set start_date ""
+    set end_date ""
 
     if { 0 == $project_id } { ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.NoProjectIdFound "No current Project Id found, please contact your System Administrator"] }
     if { "" == $survey_name } { ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.NoSurveyNameFound "No Survey Name found, please contact your System Administrator"] }
+
+    
+    if {[catch {
+        db_1row get_project_data "
+		select 
+	        	project_name, 
+			to_char(start_date, 'YYYY-MM-DD') as start_date_pretty, 
+			to_char(end_date, 'YYYY-MM-DD') as end_date_pretty, 
+			to_char(deadline_employee_evaluation, 'YYYY-MM-DD') as deadline_employee_evaluation_pretty 
+		from im_projects where project_id = :project_id"
+    } err_msg]} {
+        global errorInfo
+        ns_log Error $errorInfo
+        return "Can't show PORTLET. [lang::message::lookup "" intranet-core.Db_Error "Database error:"] $errorInfo"
+    }
 
     # Get directs 
     set sql "
@@ -585,29 +608,154 @@ ad_proc -public im_employee_evaluation_user_component {
     db_foreach rec $sql {
 
        # Check if a WF had been started already 
-       set employee_evaluation_id [db_string get_data "select employee_evaluation_id from im_employee_evaluations where project_id = :project_id and employee_id = :employee_id" -default 0]
+	set sql "
+		select 
+			employee_evaluation_id,
+			case_id 
+		from 
+			im_employee_evaluations 
+		where 
+			project_id = :project_id and 
+			employee_id = :employee_id
+       " 
+
+       set employee_evaluation_id [db_0or1row get_employee_evaluation_id $sql]
 
        append html_lines "<tr>" 
        append html_lines "<td>$name</td>" 
        if { 0 != $employee_evaluation_id } {
-           append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.AlreadyStarted "Workflow already started"]</td>"
-	   append html_lines "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id"
-           append html_lines "&transition_name_to_print=STAGE%206%20-%20Supervisor%3A%20Finishing'>"
-	   append html_lines "[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</a></td>"
+	   # Button Continue/Nothing to do 
+	   set sql "select task_id from wf_task_assignments where task_id in (select task_id from wf_tasks where case_id = :case_id and state = 'enabled') and party_id = :current_user_id"
+	   set current_task_id [db_string get_task_id $sql -default 0]
+	   if { 0 != $current_task_id } {
+	       set continue_btn "<button style='margin-top:-10px' onclick=\"location.href='/acs-workflow/task?task_id=$current_task_id'\">Next step</button>"
+	   } else {
+	       set continue_btn [lang::message::lookup "" intranet-employee-evaluation.WaitingForEmployee "Waiting"]
+	   }
+           append html_lines "<td>$continue_btn</td>"
+
+	   # Button 'Print'
+	   set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id&transition_name_to_print=$transition_name_printing"
+	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$print_link'\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
        } else {
-	   append html_lines "<td><a href='/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id&employee_id=$employee_id&survey_name=$survey_name'>"
-	   append html_lines "[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</a></td>"
-	   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Workflow not yet started"]</td>"
+	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id&employee_id=$employee_id&survey_name=$survey_name"
+	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
+	   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]</td>"
        }
        append html_lines "</tr>" 
     }
  
     set html "
-	[lang::message::lookup "" intranet-employee-evaluation.Project "Project"]: Employee Evaluation
+	<!--[lang::message::lookup "" intranet-employee-evaluation.TitlePortletSupervisor "Please manage the Employee Performance Evaluation of your Direct Reports from here."]<br/>-->
+	<table cellpadding='0' cellspacing='0' border='0'>
+	<tr>
+	<td>[lang::message::lookup "" intranet-core.StartDate "Start Date"]:</td>
+	<td>$start_date_pretty</td>
+	</tr>
+	<tr>
+	<td>[lang::message::lookup "" intranet-core.EndDate "End Date"]:</td>
+	<td>$end_date_pretty</td>
+	</tr>
+	<tr>
+	<td>[lang::message::lookup "" intranet-employee-evaluation.Deadline "Deadline"]:</td>
+	<td>$deadline_employee_evaluation_pretty</td>
+	</tr>
+	</table>
+
 	<table cellpadding='5' cellspacing='5' border='0'>
 		<tr class='rowtitle'>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Name"]</td>
-			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Link "Link"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Action "Action"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</td>
+		</tr>
+		$html_lines
+	</table>
+    "
+    return $html
+}
+
+
+ad_proc -public im_employee_evaluation_employee_component {
+    current_user_id
+} {
+    Provides links and status information for current and past 'Employee Performance Evaluations'.
+    Current transition name to be printed is required in order to create the 'Print' link.  
+} {
+
+    set project_id [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CurrentEmployeeEvaluationProjectId" -default 0]
+    set survey_name [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "SurveyName" -default ""] 
+    set name_order [parameter::get -package_id [apm_package_id_from_key intranet-core] -parameter "NameOrder" -default 1]
+    set transition_name_printing [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "TransitionNamePrinting" -default ""]
+    set workflow_key [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "WorkflowKey" -default ""]
+
+    # Init  
+    set start_date "" 
+    set end_date "" 
+    set deadline_employee_evaluation ""
+    set case_id -1
+
+    if { 0 == $project_id } { return [lang::message::lookup "" intranet-employee-evaluation.NoProjectIdFound "Can not show PORTLET, Parameter 'CurrentEmployeeEvaluationProjectId' of package 'intranet-employee-evaluation' not found. Please contact your System Administrator."] }
+    if { "" == $survey_name } { return [lang::message::lookup "" intranet-employee-evaluation.NoSurveyNameFound "Can not show PORTLET, Parameter 'SurveyName' of package 'intranet-employee-evaluation' not found. Please contact your System Administrator."] }
+    if { "" == $transition_name_printing } { return [lang::message::lookup "" intranet-employee-evaluation.ParameterTransitionNamePrintingNotFound "Can not show PORTLET, Parameter 'TransitionNamePrinting' not found. Please contact your System Administrator."] }
+    if { "" == $workflow_key } { return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound "Can not show PORTLET, Parameter 'WorkflowKey' of package 'intranet-employee-evaluation' not found. Please contact your System Administrator."] }
+
+    # Additional Sanity checks: Check if transition exists: 
+    if { ![db_string sanity_check_wf_transition "select count(*) from wf_transitions where workflow_key = :workflow_key and transition_name = :transition_name_printing" -default ""] } {
+	return [lang::message::lookup "" intranet-employee-evaluation.WorkflowMissesTransition. "Can not show PORTLET. No transition: '$transition_name_printing' in workflow: '$workflow_key' found. Please contact your System Administrator."]
+    }
+    
+    set html_lines ""
+
+    # Check if a WF had been started already 
+    if {[catch {
+	set employee_evaluation_id [db_0or1row get_employee_evaluation_data "select employee_evaluation_id, case_id from im_employee_evaluations where project_id = :project_id and employee_id = :current_user_id"]
+    } err_msg]} {
+        global errorInfo
+        ns_log Error $errorInfo
+        return "Can't show PORTLET. [lang::message::lookup "" intranet-core.Db_Error "Database error:"] $errorInfo"
+    }
+    
+    if {[catch {
+        db_1row get_project_data "select project_name, start_date, end_date, to_char(deadline_employee_evaluation, 'YYYY-MM-DD') as deadline_employee_evaluation from im_projects where project_id = :project_id"
+    } err_msg]} {
+        global errorInfo
+        ns_log Error $errorInfo
+        return "Can't show PORTLET. [lang::message::lookup "" intranet-core.Db_Error "Database error:"] $errorInfo"
+    }
+
+    # Status 
+    set current_task_id [db_string get_task_id "select task_id from wf_task_assignments where task_id in (select task_id from wf_tasks where case_id = :case_id and state = 'enabled') and party_id = :current_user_id" -default 0] 
+
+    if { 0 != $current_task_id } {
+        set wf_button "<button style='margin-top: -10px' onclick=\"location.href='/acs-workflow/task?task_id=$current_task_id'\">Next step</button>"
+    } else {
+	set wf_button [lang::message::lookup "" intranet-employee-evaluation.NoAssignment "You are currently not assigned to a Workflow Task"]
+    }
+
+    # Print Button 
+    if { 0 != $employee_evaluation_id } {
+	set print_button "
+                <form action='/intranet-employee-evaluation/print-employee-evaluation' method='POST' target='_blank'>
+                <input type='hidden' name= 'transition_name_to_print' value='$transition_name_printing'>
+                <input type='hidden' name= 'employee_evaluation_id' value='$employee_evaluation_id'>
+                <input type='submit' value='[lang::message::lookup "" intranet-employee-evaluation.Print Print]'>
+                </form>
+        "
+    } else {
+	set print_button "[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]"
+    }
+
+    append html_lines "<tr>" 
+    append html_lines "<td>$project_name <br/> [lang::message::lookup "" intranet-employee-evaluation.ToBeFinishedBy "Deadline"]: $deadline_employee_evaluation</td>" 
+    append html_lines "<td>$wf_button</td>"
+    append html_lines "<td>$print_button</td>"
+    append html_lines "</tr>" 
+ 
+    set html "
+	<table cellpadding='5' cellspacing='5' border='0'>
+		<tr class='rowtitle'>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.CurrentProject "Current Employee Evaluation Project"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Status"]</td>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</td>
 		</tr>
 		$html_lines
