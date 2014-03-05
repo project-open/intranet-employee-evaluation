@@ -608,7 +608,7 @@ ad_proc -public im_employee_evaluation_supervisor_component {
     db_foreach rec $sql {
 
        # Check if a WF had been started already 
-	set sql "
+       set sql "
 		select 
 			employee_evaluation_id,
 			case_id 
@@ -619,7 +619,12 @@ ad_proc -public im_employee_evaluation_supervisor_component {
 			employee_id = :employee_id
        " 
 
-       set employee_evaluation_id [db_0or1row get_employee_evaluation_id $sql]
+       if {[catch {
+            db_1row get_employee_evaluation_id $sql
+       } err_msg]} {
+	   set employee_evaluation_id 0
+	   set case_id 0
+       }
 
        append html_lines "<tr>" 
        append html_lines "<td>$name</td>" 
