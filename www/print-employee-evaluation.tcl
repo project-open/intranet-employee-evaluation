@@ -35,6 +35,7 @@ set admin_p [im_is_user_site_wide_or_intranet_admin $current_user_id]
 set today [lindex [split [ns_localsqltimestamp] " "] 0]
 set last_transition "Stage 6: Supervisor finishing"
 set name_order [parameter::get -package_id [apm_package_id_from_key intranet-core] -parameter "NameOrder" -default 1]
+set cust_line_break_function [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CustLineBreakFunction" -default ""]
 
 # Permission
 # Access is granted to employee, his/her supervisor or one of the supervisors
@@ -148,22 +149,28 @@ foreach transition_key $transition_keys {
     ns_log NOTICE "intranet-ee::print-employee-evaluation - transition_name: $transition_name" 
     set sql "
 	select
-	      	gqm.question_id
+	      	gqm.question_id,
+		ssq.question_text		
 	from
       		im_employee_evaluation_panel_group_map pgm,
       		im_employee_evaluation_group_questions_map gqm,
-      		im_employee_evaluation_groups g
+      		im_employee_evaluation_groups g,
+		survsimp_questions ssq
 	where
       		gqm.group_id = g.group_id and
       		pgm.wf_task_name = :transition_name and
       		pgm.survey_id = :survey_id and
-      		pgm.group_id = g.group_id
+      		pgm.group_id = g.group_id and 
+		ssq.question_id = gqm.question_id 
 	order by 
 		gqm.sort_key
     "
-    set question_list [db_list get_questions_for_group $sql]
-    foreach question_id $question_list {
+    db_foreach r $sql {
         ns_log NOTICE "intranet-ee::print-employee-evaluation - Writing question id: $question_id, employee_id: $employee_id, task_name:$transition_name"
+	# Include page breaks 
+	if { "" != $cust_line_break_function } {
+	    append html_output [eval $cust_line_break_function $question_id {$question_text}]
+	}
 	append html_output [im_employee_evaluation_question_display $question_id $employee_id $transition_name ""]
 	# ns_log NOTICE "intranet-ee::print-employee-evaluation - question_html: \n [im_employee_evaluation_question_display $question_id $employee_id $transition_name ""]"
     }

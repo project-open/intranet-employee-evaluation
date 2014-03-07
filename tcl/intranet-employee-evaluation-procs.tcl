@@ -607,23 +607,23 @@ ad_proc -public im_employee_evaluation_supervisor_component {
     "
     db_foreach rec $sql {
 
-       # Check if a WF had been started already 
+       # Check if a WF had been started already
        set sql "
-		select 
-			employee_evaluation_id,
-			case_id 
-		from 
-			im_employee_evaluations 
-		where 
-			project_id = :project_id and 
-			employee_id = :employee_id
-       " 
+                select
+                        employee_evaluation_id,
+                        case_id
+                from
+                        im_employee_evaluations
+                where
+                        project_id = :project_id and
+                        employee_id = :employee_id
+       "
 
        if {[catch {
             db_1row get_employee_evaluation_id $sql
        } err_msg]} {
-	   set employee_evaluation_id 0
-	   set case_id 0
+           set employee_evaluation_id 0
+           set case_id 0
        }
 
        append html_lines "<tr>" 
@@ -711,15 +711,26 @@ ad_proc -public im_employee_evaluation_employee_component {
     
     set html_lines ""
 
-    # Check if a WF had been started already 
+    # Check if a WF had been started already
+    set sql "
+                select
+                        employee_evaluation_id,
+                        case_id
+                from
+                        im_employee_evaluations
+                where
+                        project_id = :project_id and
+                        employee_id = :current_user_id
+    "
+
     if {[catch {
-	set employee_evaluation_id [db_0or1row get_employee_evaluation_data "select employee_evaluation_id, case_id from im_employee_evaluations where project_id = :project_id and employee_id = :current_user_id"]
+	db_1row get_employee_evaluation_id $sql
     } err_msg]} {
-        global errorInfo
-        ns_log Error $errorInfo
-        return "Can't show PORTLET. [lang::message::lookup "" intranet-core.Db_Error "Database error:"] $errorInfo"
+	set employee_evaluation_id 0
+	set case_id 0
     }
-    
+
+
     if {[catch {
         db_1row get_project_data "select project_name, start_date, end_date, to_char(deadline_employee_evaluation, 'YYYY-MM-DD') as deadline_employee_evaluation from im_projects where project_id = :project_id"
     } err_msg]} {
