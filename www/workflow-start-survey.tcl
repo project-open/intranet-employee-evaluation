@@ -74,7 +74,7 @@ if { $supervisor_id != $current_user_id } {
 
 # Check if employee is member of the EE Project 
 if { ![im_biz_object_member_p $employee_id $project_id] } {
-    ad_return_complaint 1 [lang::message::lookup "" intranet-employee-evaluation.NotAllowed "You are not allowed to start this workflow. Please contact HR."]
+    ad_return_complaint 1 [lang::message::lookup "" intranet-employee-evaluation.NotAllowed "You are not allowed to start this workflow. Employee needs to be a member of the 'Employee Evaluation Project' Please contact HR."]
     ad_script_abort
 }
 
