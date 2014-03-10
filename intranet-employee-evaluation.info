@@ -9,7 +9,7 @@
     <inherit-templates-p>t</inherit-templates-p>
     <auto-mount>intranet-employee-evaluation</auto-mount>
 
-    <version name="0.6d" url="http://openacs.org/repository/download/apm/intranet-employee-evaluation-0.6d.apm">
+    <version name="0.7d" url="http://openacs.org/repository/download/apm/intranet-employee-evaluation-0.7d.apm">
         <owner url="mailto:info@project-open.com">Project Open Business Solutions S.L.</owner>
         <summary>Allows to conduct Employee Performance Evaluations</summary>
         <vendor url="www.project-open.org">Project Open Business Solutions S.L.</vendor>
@@ -30,6 +30,7 @@
 	  <parameter datatype="string" min_n_values="1" max_n_values="1" name="SurveyName" default="Employee Evaluation Test" description="Name of survey to be used for current 'Employee Evaluation'"/> 
 	  <parameter datatype="string" min_n_values="1" max_n_values="1" name="TransitionNamePrinting" default="" description="Name of current 'Workflow Transition' containing all survey questions to be printed."/>
           <parameter datatype="string" min_n_values="1" max_n_values="1" name="CustLineBreakFunction" default="" description="Name of function to call to include custom line breaks when printing."/>
+          <parameter datatype="string" min_n_values="1" max_n_values="1" name="CustomValidationFunction" default="" description="Name of function to perform validation on forms."/>
         </parameters>
     </version>
 </package>
