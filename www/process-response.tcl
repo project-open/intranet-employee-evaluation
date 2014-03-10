@@ -28,6 +28,8 @@ ad_page_contract {
     
     @author  jsc@arsdigita.com
     @author  nstrug@arsdigita.com
+    @author  klaus.hofeditz@project-open.com
+
     @creation-date    28th September 2000
     @cvs-id $Id$
 } {
@@ -46,6 +48,26 @@ ad_page_contract {
     { cancel_btn "" }
 
 } -validate {
+
+    custom_validation {
+	set custom_validation_function [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CustomValidationFunction" -default ""]
+	if { "" != $custom_validation_function } {
+            set val_result [$custom_validation_function \
+                                                $survey_id \
+                                               	$related_object_id \
+						[array get response_to_question] \
+                                                $related_object_id \
+                                                $related_context_id \
+                                                $task_id \
+                                                $task_name \
+                                                $role \
+						$group_id ]
+
+	    if { "" != $val_result } {
+		ad_complain $val_result
+	    }
+	}
+    }
 
     cancel { 
 	if { "" != $cancel_btn } {
@@ -134,7 +156,11 @@ ad_page_contract {
 	    ad_return_complaint 1 [lang::message::lookup "" intranet-employee-avaluation.NoQuestionFound "Did not find any questions ralated to this Panel, please verify"]
         }
 	set questions_with_missing_responses [list]
+
+	# Costum validation check 
 	set sum_weight 0 
+	set description_ctr 0
+
 	ns_log NOTICE "intranet-employee-evaluation::process-response - Validating: question_info_list: $question_info_list"
 
 	foreach question $question_info_list { 
@@ -200,17 +226,6 @@ ad_page_contract {
 		    ad_complain "Your file is zero-length. Either you attempted to upload a zero length file, a file which does not exist, or something went wrong during the transfer."
 		}
 	    }
-	    
-	    # Custom validation 
-	    ns_log NOTICE "intranet-ee::process-response Check weight: question_text: $question_text, [string is double -strict $response_to_question($question_id)]"
-	    if { "Weight:" == $question_text && [info exists response_to_question($question_id)] && [string is double -strict $response_to_question($question_id)] } {
-		ns_log NOTICE "intranet-ee::process-response - Found weight: $response_to_question($question_id)"
-		set sum_weight [expr $sum_weight + $response_to_question($question_id)]
-	    }
-
-	}
-	if { 100 != $sum_weight && $task_name == "STAGE 0 - Supervisor: Enter Employee Objectives"} {
-	    ad_complain "Weight(s) would need to add up to 100. Sum of all 'weights' entered so far is: $sum_weight."
 	}
 
 	if { [llength $questions_with_missing_responses] > 0 } {
