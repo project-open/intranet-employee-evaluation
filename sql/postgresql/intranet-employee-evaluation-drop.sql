@@ -18,6 +18,7 @@ drop sequence im_employee_evaluation_groups_seq;
 drop sequence im_employee_evaluation_group_questions_map_seq;
 drop sequence im_employee_evaluation_config_seq;
 drop sequence im_employee_evaluation_panel_group_map_seq;
+drop sequence im_employee_evaluation_processes_seq;
 
 delete from im_employee_evaluation_config;
 drop table im_employee_evaluation_config;
@@ -36,6 +37,9 @@ drop table im_employee_evaluation_groups;
 
 delete from im_employee_evaluations;
 drop table im_employee_evaluations;
+
+delete from im_employee_evaluation_processes;
+drop table im_employee_evaluation_processes;
 
 delete from acs_objects where object_type = 'im_employee_evaluation';
 delete from acs_object_type_tables where object_type = 'im_employee_evaluation';
