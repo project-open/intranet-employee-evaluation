@@ -13,6 +13,12 @@
 # FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 
+## ###################
+#  Documentation 
+## ###################
+# Use case_id to get survey_id & and employee_id 
+# Look up "im_employee_evaluation_panel_group_map" to get the group we need to show on the panel 
+# Look up "im_employee_evaluation_group_questions_map" to get all questions we need to show 
 
 if {[info exists task]} {
 
@@ -66,32 +72,19 @@ if {[info exists task]} {
 
     # Check if there are TAB's on this page 
     set sql "
-	select 
-	    distinct g.group_name,
-	    (select group_id from im_employee_evaluation_groups where group_name = g.group_name order by group_id limit 1) as group_id
+	select  
+		g.group_id,
+		g.group_name
 	from 
-	    im_employee_evaluation_group_questions_map m,
-	    im_employee_evaluation_groups g,
-	    im_employee_evaluation_panel_group_map 
+		im_employee_evaluation_groups g,
+		im_employee_evaluation_panel_group_map pgm
 	where 
-	    m.question_id in (
-		      -- get all questions for PANEL 
-        	          select
-			        gqm.question_id
-            		  from
-				im_employee_evaluation_panel_group_map pgm,
-				im_employee_evaluation_group_questions_map gqm,
-				im_employee_evaluation_groups g
-			  where
-				gqm.group_id = g.group_id and
-				pgm.wf_task_name = :task_name and
-				pgm.survey_id = :survey_id and
-				pgm.group_id = g.group_id 
-	    )
-	    and g.group_id = m.group_id
-	    and g.grouping_type = 'tab'
+		g.grouping_type = 'tab'
+		and pgm.wf_task_name = :task_name
+		and g.group_id = pgm.group_id
 	order by 
-	group_id"
+		group_id
+    "
 
     set ctr 1
     db_foreach tab $sql {
