@@ -35,7 +35,8 @@ set admin_p [im_is_user_site_wide_or_intranet_admin $current_user_id]
 set today [lindex [split [ns_localsqltimestamp] " "] 0]
 set last_transition "Stage 6: Supervisor finishing"
 set name_order [parameter::get -package_id [apm_package_id_from_key intranet-core] -parameter "NameOrder" -default 1]
-set cust_line_break_function [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CustLineBreakFunction" -default ""]
+set cust_line_break_function [db_string get_data "select line_break_function from im_employee_evaluation_processes where status = 'Current'" -default ""]
+
 
 # Permission
 # Access is granted to employee, his/her supervisor or one of the supervisors

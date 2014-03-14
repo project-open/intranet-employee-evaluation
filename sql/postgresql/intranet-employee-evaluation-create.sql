@@ -160,6 +160,30 @@ ALTER TABLE survsimp_questions ADD CONSTRAINT survsimp_q_pres_type_ck check (pre
 -- Data Layer
 -- --------------------------------------------------------------
 
+create sequence im_employee_evaluation_processes_seq;
+create table im_employee_evaluation_processes (
+       id				integer
+					primary key,
+       name                  		varchar(100)
+       					NOT NULL,
+       project_id			integer
+					constraint project_id_fk
+                                        references im_projects
+					NOT NULL,
+       survey_name			varchar(100)
+       					NOT NULL,
+       workflow_key			varchar(50),					
+       line_break_function		varchar(50),					
+       validation_function		varchar(50),					
+       transition_name_printing         varchar(50),
+       evaluation_year			integer
+       					NOT NULL,
+       status				varchar(50)
+					NOT NULL					
+);
+
+ALTER TABLE im_employee_evaluation_processes ADD CONSTRAINT im_employee_evaluation_processes_status_ck check (status in ('Current','Next','Finished'));
+
 -- Manage Evaluations
 -- Avoid two WF cases for one EE project 
 create table im_employee_evaluations (
@@ -349,13 +373,13 @@ begin
                 null,                           -- creation_user
                 null,                           -- creation_ip
                 null,                           -- context_id
-                'Employee Evaluation',          -- plugin_name
+                'Progress', -- plugin_name
                 'intranet-employee-evaluation', -- package_name
                 'right',                        -- location
                 '/intranet-employee-evaluation/index',         -- page_url
                 null,                           -- view_name
                 5,                              -- sort_order
-                'im_employee_evaluation_statistics $current_user_id' -- component_tcl
+                'im_employee_evaluation_statistics_current_project $current_user_id' -- component_tcl
         ) into v_plugin_id;
 
         select group_id into v_hr_managers from groups where group_name = 'HR Managers';
@@ -366,6 +390,8 @@ begin
 end;$BODY$ LANGUAGE 'plpgsql';
 SELECT inline_0 ();
 DROP FUNCTION inline_0 ();
+
+
 
 -- --------------------------------------------------------------
 -- Create Menu

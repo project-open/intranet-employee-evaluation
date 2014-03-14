@@ -14,6 +14,7 @@
 # See the GNU General Public License for more details.
 
 ad_library {
+    @author others@openacs.org
     @author klaus.hofeditz@project-open.com
 }
 
@@ -63,7 +64,7 @@ ad_proc -public create_html_combined_type_one {
     }
 
     if { $ctr != 4 } {
-	ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.Expecting5SubQuestions "Expecting 4 Sub-Questions for this question type, but found only: $ctr"]
+	ad_return_complaint 1 [lang::message::lookup "" intranet-employee-evaluation.Expecting5SubQuestions "Expecting 4 Sub-Questions for this question type, but found only: $ctr"]
     }
 
     # Build table
@@ -565,21 +566,34 @@ ad_proc -public im_employee_evaluation_supervisor_component {
     # Check if current user is supervisor of an employee
     set number_direct_reports [db_string get_number_direct_reports "select count(*) from im_employees where supervisor_id = :current_user_id" -default 0]
     if { 0 == $number_direct_reports } {return "" }
-
-    set project_id [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CurrentEmployeeEvaluationProjectId" -default 0]
-    set survey_name [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "SurveyName" -default ""] 
     set name_order [parameter::get -package_id [apm_package_id_from_key intranet-core] -parameter "NameOrder" -default 1]
-    set transition_name_printing [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "TransitionNamePrinting" -default ""]
 
     set html_lines ""
     set deadline_employee_evaluation ""
     set start_date ""
     set end_date ""
 
-    if { 0 == $project_id } { ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.NoProjectIdFound "No current Project Id found, please contact your System Administrator"] }
-    if { "" == $survey_name } { ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.NoSurveyNameFound "No Survey Name found, please contact your System Administrator"] }
+    db_foreach r "select * from im_employee_evaluation_processes where status in ('Current','Next')" {
+	switch $status {
+	    Current {
+		set evaluation_name_this_year $name
+		set survey_name_this_year $survey_name
+		set project_id_this_year $project_id
+		set transition_name_printing_this_year $transition_name_printing
+	    }
+	    Next {
+		set evaluation_name_next_year $name
+		set survey_name_next_year $survey_name
+		set project_id_next_year $project_id		
+		set transition_name_printing_next_year $transition_name_printing
+	    }
+	}
+    }
+    if { ![info exists evaluation_name_this_year] || ![info exists evaluation_name_this_year] } {
+        set msg "Can not show PORTLET. No data for Employee Evaluation Processes found. Table 'im_employee_evaluation_processes' needs to have at least one record with status 'Current' and one with status 'Next'. Please contact your System Administrator."
+        return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound $msg]
+    }
 
-    
     if {[catch {
         db_1row get_project_data "
 		select 
@@ -587,50 +601,38 @@ ad_proc -public im_employee_evaluation_supervisor_component {
 			to_char(start_date, 'YYYY-MM-DD') as start_date_pretty, 
 			to_char(end_date, 'YYYY-MM-DD') as end_date_pretty, 
 			to_char(deadline_employee_evaluation, 'YYYY-MM-DD') as deadline_employee_evaluation_pretty 
-		from im_projects where project_id = :project_id"
+		from im_projects where project_id = :project_id_this_year"
     } err_msg]} {
         global errorInfo
         ns_log Error $errorInfo
         return "Can't show PORTLET. [lang::message::lookup "" intranet-core.Db_Error "Database error:"] $errorInfo"
     }
 
-    # Get directs 
+
+    # Get directs
     set sql "
-	select 
-		employee_id, 
-		im_name_from_user_id(employee_id, :name_order) as name
-	from 
-		im_employees
-	where 
-		supervisor_id = :current_user_id	
-
+        select
+                e.employee_id,
+                im_name_from_user_id(e.employee_id, :name_order) as name,
+                COALESCE((select employee_evaluation_id from im_employee_evaluations where project_id=:project_id_this_year and employee_id = e.employee_id),0) as employee_evaluation_id_this_year,
+                COALESCE((select case_id from im_employee_evaluations where project_id=:project_id_this_year and employee_id = e.employee_id),0) as case_id_this_year,
+                COALESCE((select employee_evaluation_id from im_employee_evaluations where project_id=:project_id_next_year and employee_id = e.employee_id),0) as employee_evaluation_id_next_year,
+                COALESCE((select case_id from im_employee_evaluations where project_id=:project_id_next_year and employee_id = e.employee_id),0) as case_id_next_year
+        from
+                im_employees e
+        where
+    		e.supervisor_id = :current_user_id
     "
+
     db_foreach rec $sql {
-
-       # Check if a WF had been started already
-       set sql "
-                select
-                        employee_evaluation_id,
-                        case_id
-                from
-                        im_employee_evaluations
-                where
-                        project_id = :project_id and
-                        employee_id = :employee_id
-       "
-
-       if {[catch {
-            db_1row get_employee_evaluation_id $sql
-       } err_msg]} {
-           set employee_evaluation_id 0
-           set case_id 0
-       }
 
        append html_lines "<tr>" 
        append html_lines "<td>$name</td>" 
-       if { 0 != $employee_evaluation_id } {
+
+       # THIS YEAR  
+       if { 0 != $employee_evaluation_id_this_year } {
 	   # Button Continue/Nothing to do 
-	   set sql "select task_id from wf_task_assignments where task_id in (select task_id from wf_tasks where case_id = :case_id and state = 'enabled') and party_id = :current_user_id"
+	   set sql "select task_id from wf_task_assignments where task_id in (select task_id from wf_tasks where case_id = :case_id_this_year and state = 'enabled') and party_id = :current_user_id"
 	   set current_task_id [db_string get_task_id $sql -default 0]
 	   if { 0 != $current_task_id } {
 	       set continue_btn "<button style='margin-top:-10px' onclick=\"location.href='/acs-workflow/task?task_id=$current_task_id'\">Next step</button>"
@@ -640,13 +642,34 @@ ad_proc -public im_employee_evaluation_supervisor_component {
            append html_lines "<td>$continue_btn</td>"
 
 	   # Button 'Print'
-	   set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id&transition_name_to_print=$transition_name_printing"
-	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$print_link'\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
+	   set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id_this_year&transition_name_to_print=$transition_name_printing_this_year"
+	   #append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$print_link'\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
+	   append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
+
        } else {
-	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id&employee_id=$employee_id&survey_name=$survey_name"
+	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_this_year&employee_id=$employee_id&survey_name=$survey_name_this_year"
 	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
 	   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]</td>"
        }
+
+       # NEXT YEAR 
+       if { 0 != $employee_evaluation_id_next_year } {
+	   append html_lines "<td> [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives entered"]</td>"
+	   set ttt {
+	       # set sql "select count(*) from wf_task_assignments where task_id in (select task_id from wf_tasks where case_id = :case_id_next_year and state = 'enabled') and party_id = :current_user_id"
+	       if { [db_string get_data $sql -default 0] } {
+		   append html_lines "<td> [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives entered"]</td>"
+	       } else {
+		   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_next_year&employee_id=$employee_id&survey_name=$survey_name_next_year"
+		   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
+	       }
+	   }
+       } else {
+	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_next_year&employee_id=$employee_id&survey_name=$survey_name_next_year"
+	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
+       }
+       # Print
+       append html_lines "<td>&nbsp;</td>"
        append html_lines "</tr>" 
     }
  
@@ -667,10 +690,17 @@ ad_proc -public im_employee_evaluation_supervisor_component {
 	</tr>
 	</table>
 
-	<table cellpadding='5' cellspacing='5' border='0'>
+	<table cellpadding='5' cellspacing='5' border='0>
+		<tr class='rowtitle'>
+			<td class='rowtitle'>&nbsp;</td>
+			<td class='rowtitle' colspan='2'>$evaluation_name_this_year</td>
+			<td class='rowtitle' colspan='2'>$evaluation_name_next_year</td>
+		</tr>
 		<tr class='rowtitle'>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Name"]</td>
-			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Action "Action"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Workflow "Workflow"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Workflow "Workflow"]</td>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</td>
 		</tr>
 		$html_lines
@@ -687,11 +717,7 @@ ad_proc -public im_employee_evaluation_employee_component {
     Current transition name to be printed is required in order to create the 'Print' link.  
 } {
 
-    set project_id [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CurrentEmployeeEvaluationProjectId" -default 0]
-    set survey_name [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "SurveyName" -default ""] 
     set name_order [parameter::get -package_id [apm_package_id_from_key intranet-core] -parameter "NameOrder" -default 1]
-    set transition_name_printing [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "TransitionNamePrinting" -default ""]
-    set workflow_key [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "WorkflowKey" -default ""]
 
     # Init  
     set start_date "" 
@@ -699,14 +725,31 @@ ad_proc -public im_employee_evaluation_employee_component {
     set deadline_employee_evaluation ""
     set case_id -1
 
-    if { 0 == $project_id } { return [lang::message::lookup "" intranet-employee-evaluation.NoProjectIdFound "Can not show PORTLET, Parameter 'CurrentEmployeeEvaluationProjectId' of package 'intranet-employee-evaluation' not found. Please contact your System Administrator."] }
-    if { "" == $survey_name } { return [lang::message::lookup "" intranet-employee-evaluation.NoSurveyNameFound "Can not show PORTLET, Parameter 'SurveyName' of package 'intranet-employee-evaluation' not found. Please contact your System Administrator."] }
-    if { "" == $transition_name_printing } { return [lang::message::lookup "" intranet-employee-evaluation.ParameterTransitionNamePrintingNotFound "Can not show PORTLET, Parameter 'TransitionNamePrinting' not found. Please contact your System Administrator."] }
-    if { "" == $workflow_key } { return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound "Can not show PORTLET, Parameter 'WorkflowKey' of package 'intranet-employee-evaluation' not found. Please contact your System Administrator."] }
+    db_foreach r "select * from im_employee_evaluation_processes where status in ('Current','Next')" {
+        switch $status {
+            "Current" {
+                set evaluation_name_this_year $name
+                set project_id_this_year $project_id
+                set transition_name_printing_this_year $transition_name_printing
+		set workflow_key_this_year $workflow_key
+            }
+            "Next" {
+                set evaluation_name_next_year $name
+                set project_id_next_year $project_id
+                set transition_name_printing_next_year $transition_name_printing
+		set workflow_key_next_year $workflow_key
+            }
+        }
+    }
+
+    if { ![info exists workflow_key_this_year] || ![info exists workflow_key_next_year] } { 
+	set msg "Can not show PORTLET. No data for Employee Evaluation Processes found. Table 'im_employee_evaluation_processes' needs to have at least one record with status 'Current' and one with status 'next'. Please contact your System Administrator."
+	return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound $msg]
+    }
 
     # Additional Sanity checks: Check if transition exists: 
-    if { ![db_string sanity_check_wf_transition "select count(*) from wf_transitions where workflow_key = :workflow_key and transition_name = :transition_name_printing" -default ""] } {
-	return [lang::message::lookup "" intranet-employee-evaluation.WorkflowMissesTransition. "Can not show PORTLET. No transition: '$transition_name_printing' in workflow: '$workflow_key' found. Please contact your System Administrator."]
+    if { ![db_string sanity_check_wf_transition "select count(*) from wf_transitions where workflow_key = :workflow_key_this_year and transition_name = :transition_name_printing_this_year" -default ""] } {
+	return [lang::message::lookup "" intranet-employee-evaluation.WorkflowMissesTransition. "Can not show PORTLET. No transition: '$transition_name_printing_this_year' in workflow: '$workflow_key_this_year' found. Please contact your System Administrator."]
     }
     
     set html_lines ""
@@ -719,7 +762,7 @@ ad_proc -public im_employee_evaluation_employee_component {
                 from
                         im_employee_evaluations
                 where
-                        project_id = :project_id and
+                        project_id = :project_id_this_year and
                         employee_id = :current_user_id
     "
 
@@ -730,9 +773,8 @@ ad_proc -public im_employee_evaluation_employee_component {
 	set case_id 0
     }
 
-
     if {[catch {
-        db_1row get_project_data "select project_name, start_date, end_date, to_char(deadline_employee_evaluation, 'YYYY-MM-DD') as deadline_employee_evaluation from im_projects where project_id = :project_id"
+        db_1row get_project_data "select project_name, start_date, end_date, to_char(deadline_employee_evaluation, 'YYYY-MM-DD') as deadline_employee_evaluation from im_projects where project_id = :project_id_this_year"
     } err_msg]} {
         global errorInfo
         ns_log Error $errorInfo
@@ -752,7 +794,7 @@ ad_proc -public im_employee_evaluation_employee_component {
     if { 0 != $employee_evaluation_id } {
 	set print_button "
                 <form action='/intranet-employee-evaluation/print-employee-evaluation' method='POST' target='_blank'>
-                <input type='hidden' name= 'transition_name_to_print' value='$transition_name_printing'>
+                <input type='hidden' name= 'transition_name_to_print' value='$transition_name_printing_this_year'>
                 <input type='hidden' name= 'employee_evaluation_id' value='$employee_evaluation_id'>
                 <input type='submit' value='[lang::message::lookup "" intranet-employee-evaluation.Print Print]'>
                 </form>
@@ -762,17 +804,27 @@ ad_proc -public im_employee_evaluation_employee_component {
     }
 
     append html_lines "<tr>" 
-    append html_lines "<td>$project_name <br/> [lang::message::lookup "" intranet-employee-evaluation.ToBeFinishedBy "Deadline"]: $deadline_employee_evaluation</td>" 
     append html_lines "<td>$wf_button</td>"
     append html_lines "<td>$print_button</td>"
+    append html_lines "<td>$deadline_employee_evaluation</td>" 
     append html_lines "</tr>" 
  
     set html "
+	<h3>$project_name</h3>
 	<table cellpadding='5' cellspacing='5' border='0'>
 		<tr class='rowtitle'>
-			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.CurrentProject "Current Employee Evaluation Project"]</td>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Status"]</td>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.ToBeFinishedBy "Deadline"]</td>
+		</tr>
+		$html_lines
+	</table>
+	<br/>
+	<h3> [lang::message::lookup "" intranet-employee-evaluation.Objectives "Objectives"]</h3>
+	<table cellpadding='5' cellspacing='5' border='0'>
+		<tr class='rowtitle'>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Status"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.ToBeFinishedBy "Deadline"]</td>
 		</tr>
 		$html_lines
 	</table>
@@ -786,13 +838,30 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
     Provides statistical data about progress of current survey 
 } {
 
-    set project_id [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CurrentEmployeeEvaluationProjectId" -default 0]
-    set survey_name [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "SurveyName" -default ""]
-    set wf_key [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "WorkflowKey" -default ""]
+    # Init 
+    db_foreach r "select * from im_employee_evaluation_processes where status in ('Current','Next')" {
+        switch $status {
+            Current {
+                set evaluation_name_this_year $name
+                set project_id_this_year $project_id
+                set transition_name_printing_this_year $transition_name_printing
+                set workflow_key_this_year $workflow_key
+		set survey_name_this_year $survey_name
+            }
+            Next {
+                set evaluation_name_next_year $name
+                set project_id_next_year $project_id
+                set transition_name_printing_next_year $transition_name_printing
+                set workflow_key_next_year $workflow_key
+                set survey_name_next_year $survey_name
+            }
+        }
+    }
 
-    if { 0 == $project_id } { ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.NoProjectIdFound "No current Project Id found, please contact your System Administrator"] }
-    if { "" == $survey_name } { ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.NoSurveyNameFound "No Survey Name found, please contact your System Administrator"] }
-
+    if { ![info exists workflow_key_this_year] || ![info exists workflow_key_next_year] } { 
+        set msg "Can not show PORTLET. No data for Employee Evaluation Processes found. Table 'im_employee_evaluation_processes' needs to have at least one record with status 'Current' and one with status 'next'. Please contact your System Administrator."
+        return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound $msg]
+    }
 
     # Total participants 
     set sql "
@@ -807,7 +876,7 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
 		LEFT OUTER JOIN im_biz_object_members bo_rels ON (rels.rel_id = bo_rels.rel_id)
 		LEFT OUTER JOIN im_categories c ON (c.category_id = bo_rels.object_role_id)
 	where
-		rels.object_id_one = :project_id and
+		rels.object_id_one = :project_id_this_year and
 		rels.object_id_two in (select party_id from parties) and
 		rels.object_id_two not in (
 		   -- Exclude banned or deleted users
@@ -823,18 +892,21 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
     "
     set total_participants [db_string get_total_participants $sql -default 0]
 
+    set html_output "<strong>[lang::message::lookup "" intranet-employee-evaluation.TotalParticipants "Total Participants"]:</strong> $total_participants <br/><br/>"
+    append html_output "<strong>[lang::message::lookup "" intranet-employee-evaluation.ActiveWorkflows: "Active Workflows"]:</strong> &nbsp;"
+
     # Statistics 'Places'
     set sql "
       select 
-	 (select place_name from wf_places where place_key = t.place_key) as place_name,
+	 (select place_name from wf_places where place_key = t.place_key and workflow_key=:workflow_key_this_year) as place_name,
 	 count(*) as amount
       from 
     	 wf_tokens t
       where 
           state = 'free' 
-    	  and t.workflow_key = :wf_key
+    	  and t.workflow_key = :workflow_key_this_year
     	  and t.case_id in (
-	      select distinct case_id from im_employee_evaluations where project_id = :project_id
+	      select distinct case_id from im_employee_evaluations where project_id = :project_id_this_year
     	  )
      group by 
      	   place_name
@@ -842,36 +914,39 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
 	   amount
      "
 
-    set status_table_html "<table cellpadding='0' cellspacing='0' border='0'>"
-
+    set status_table_lines_html ""
     db_foreach r $sql {
 	if { 0 != $amount } {
 	    set percentage [expr 100 * $amount / $total_participants]
 	} else {
 	    set percentage 0 
 	}
-	append status_table_html "<tr>
-		<td>[lang::message::lookup "" intranet-employee-evaluation.WfPlaceName "Place"]</td>
-       		<td>[lang::message::lookup "" intranet-employee-evaluation.Number cases "Number Cases"]</td>
-		<td>$percentage %</td>
-	</tr>"
+	append status_table_lines_html "
+		<tr>
+		<td>$place_name</td>
+       		<td align='right'>$amount</td>
+		<td align='right'>${percentage}%</td>
+		</tr>
+	"
     }
-    append status_table_html "</table>"
-    set html "
-        <table cellpadding='5' cellspacing='5' border='0'>
-                <tr class='rowtitle'>
-                        <td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Project "Project"]</td>
-                        <td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Status"]</td>
-                        <td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Link "Link"]</td>
-                </tr>
-                <tr>
-                        <td>Employee Evaluation</td>
-                        <td>-</td>
-                        <td><a href='/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id&survey_name=$survey_name'>[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</a></td>
-                </tr>
-        </table>
-    "
-    return $html
+    
+    if { "" != $status_table_lines_html } {
+	append html_output "
+		<br/><br/>
+		<table cellpadding='5' cellspacing='5' border='0'>
+                	<tr class='rowtitle'>
+                	<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.WfPlaceName "Place"]</td>
+                	<td class='rowtitle' align='center'>[lang::message::lookup "" intranet-employee-evaluation.NumberCases "Number<br/>Cases"]</td>
+                	<td class='rowtitle' align='center'>[lang::message::lookup "" intranet-employee-evaluation.Percent "Percent"]</td>
+                	</tr>
+			$status_table_lines_html
+		</table>"
+    } else {
+	append html_output [lang::message::lookup "" intranet-employee-evaluation.NoWorkflowsStartedYet "No workflows started yet"]
+    }
+
+    return $html_output
+
 }
 
 

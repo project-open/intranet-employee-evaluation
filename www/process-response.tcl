@@ -250,6 +250,7 @@ ad_page_contract {
 set user_id [ad_verify_and_get_user_id]
 set response_id [db_nextval acs_object_id_seq]
 set creation_ip [ad_conn peeraddr]
+set user_name [im_name_from_user_id $user_id]
 
 # -----------------------------------------------------
 # Do the inserts.
@@ -462,7 +463,7 @@ db_transaction {
 # Close the workflow task if task_id is available
 if { "" != $task_id && "" != $save_and_finish_btn } {
     set the_action "finish"
-    set message [lang::message::lookup "" simple-survey.Task_finished_by_simple_survey "Task finished by Simple Survey"]
+    set message [lang::message::lookup "" simple-survey.Task_finished_by_simple_survey "Task: $task_name finished by: $user_name"]
 
     set journal_id [wf_task_action \
 			-user_id $user_id \

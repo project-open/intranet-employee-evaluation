@@ -28,7 +28,7 @@ ad_page_contract {
 
 set current_user_id [ad_maybe_redirect_for_registration]
 set admin_p [im_is_user_site_wide_or_intranet_admin $current_user_id]
-set wf_key [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "WorkflowKey" -default ""]
+set wf_key [db_string get_wf_key "select workflow_key from im_employee_evaluation_processes where project_id = :project_id" -default 0]
 
 # Either survey_id or name  
 if { 0 == $survey_id } {
