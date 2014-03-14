@@ -34,7 +34,19 @@ if {[info exists task]} {
     set task_status $task(state)
     
     # get survey_id & employee_id
-    db_1row get_survey_id "select survey_id, employee_id from im_employee_evaluations where case_id=:case_id"
+    db_1row get_survey_id "
+	select 
+		e.survey_id, 
+		e.employee_id, 
+		ep.status as evaluation_process_status
+	from 
+		im_employee_evaluations e,
+		im_employee_evaluation_processes ep
+	where 
+		case_id=:case_id
+		and e.project_id = ep.project_id
+    "
+
     set return_url [im_url_with_query]
     set related_object_id $employee_id
 
@@ -142,12 +154,20 @@ if {[info exists task]} {
                 <table cellpadding='0' cellspacing='0' border='0' width='100%'><tr><td align='center'>
                 <input type='submit' value='Cancel' name='cancel_btn'>&nbsp;
                 <input type='submit' value='Save Draft' name='save_btn'>&nbsp;
-                <input type='submit' value='                    Save and Finish Stage                    ' name='save_and_finish_btn'>&nbsp;
+	"
+
+	# Improve! In current use case WF case should not move on   
+	if { "Next" != $evaluation_process_status } {
+	    append html "<input type='submit' value='                    Save and Finish Stage                    ' name='save_and_finish_btn'>&nbsp;"
+	}
+
+        append html "
 		</td></tr></table></form><br/><hr>
 		<strong>Legend:</strong><br/><ul>
 			<li style='font-seize: 80%'>Save Draft: Save current status. The Workflow does not progress. You can open the form again to make changes and extensions.</li>
 			<li style='font-seize: 80%'>Save and Finish Stage: The next 'Workflow Task' will be triggered. It's owner will be informed that you have finished your part.</li>
-		</ul>"
+		</ul>
+	"
     } else {
 	# Get all questions for this group 
 	set sql "
@@ -177,7 +197,13 @@ if {[info exists task]} {
                 <table cellpadding='0' cellspacing='0' border='0' width='100%'><tr><td align='center'>
                 <input type='submit' value='Cancel' name='cancel_btn'>&nbsp;
                 <input type='submit' value='Save Draft' name='save_btn'>&nbsp;
-                <input type='submit' value='                    Submit                    ' name='save_and_finish_btn'>&nbsp;
+        "
+        # Improve! In current use case WF case should not move on
+	    if { "Next" != $evaluation_process_status } {
+                append html "<input type='submit' value='                    Submit                    ' name='save_and_finish_btn'>&nbsp;"
+	    }
+	    
+        append html "
                 </td></tr></table></form>"
 	}
     }
