@@ -64,7 +64,21 @@ if {[info exists task]} {
 
     # Getting group_id for this panel 
     set group_id [db_string get_group_id "select group_id from im_employee_evaluation_panel_group_map where wf_task_name = :task_name and survey_id=:survey_id" -default 0] 
-	
+
+    # Getting group_id for this PANEL
+    set sql "
+	select
+		g.group_id
+	from
+		im_employee_evaluation_panel_group_map gm,
+		im_employee_evaluation_groups g
+	where
+		wf_task_name = :task_name
+		and gm.survey_id = :survey_id
+		and gm.group_id = g.group_id
+		and g.grouping_type = 'panel'
+    "	
+
     append html "<form action='/intranet-employee-evaluation/process-response' enctype='multipart/form-data' method='post'>"
     append html "[export_vars -form { survey_id return_url related_object_id task_id task_name group_id role}]"
 
@@ -82,6 +96,7 @@ if {[info exists task]} {
 		g.grouping_type = 'tab'
 		and pgm.wf_task_name = :task_name
 		and g.group_id = pgm.group_id
+                and pgm.survey_id = :survey_id
 	order by 
 		group_id
     "
