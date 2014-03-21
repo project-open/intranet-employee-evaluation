@@ -16,6 +16,10 @@
   span.ee-survey-question-title-type-1 {
   	font-weight:bold;
   }
+  span.ee-survey-textarea-print {
+	width: 250px;  
+  }
+
   .page-break { 
   	display: block; 
 	page-break-before: always; 
@@ -26,7 +30,7 @@
 </head>
 
 <body>
-<table cellpadding="4" cellspacing="4" border="0" style="width:100%;max-width:800px;table-layout:fixed;display:block;">
+<table cellpadding="4" cellspacing="4" border="0" style="width:100%;max-width:900px;table-layout:fixed;display:block;">
 <tr><td>@html_output;noquote@</td></tr>
 </table>
 

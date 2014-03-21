@@ -26,6 +26,7 @@ ad_proc -public create_html_combined_type_one {
     question_id
     employee_id
     wf_task_name
+    { print_p f }
 } {
     Returns HTML code for "Combined Type 1" type
     +----------------------------------------------------------------------------------------------------+
@@ -59,8 +60,7 @@ ad_proc -public create_html_combined_type_one {
     foreach sub_question_id $subquestion_list {
         incr ctr
 	ns_log NOTICE "intranet-employee-evaluation-procs::create_html_combined_type_one - sub_question_id: $sub_question_id"
-	# ad_return_complaint xx "im_employee_evaluation_question_display $sub_question_id $employee_id '$wf_task_name'"
-	eval {set subquestion_html_$ctr [im_employee_evaluation_question_display $sub_question_id $employee_id $wf_task_name ""]}
+	eval {set subquestion_html_$ctr [im_employee_evaluation_question_display $sub_question_id $employee_id $wf_task_name "" $print_p]}
     }
 
     if { $ctr != 4 } {
@@ -90,6 +90,7 @@ ad_proc -public create_html_combined_type_two {
     question_id
     employee_id
     wf_task_name
+    {print_p f}
 } {
     Returns HTML code for "Combined Type 1" type
 
@@ -127,8 +128,7 @@ ad_proc -public create_html_combined_type_two {
     foreach sub_question_id $subquestion_list {
         incr ctr
         ns_log NOTICE "intranet-employee-evaluation-procs::create_html_combined_type_one - sub_question_id: $sub_question_id"
-        # ad_return_complaint xx "im_employee_evaluation_question_display $sub_question_id $employee_id '$wf_task_name'"
-        eval {set subquestion_html_$ctr [im_employee_evaluation_question_display $sub_question_id $employee_id $wf_task_name ""]}
+        eval {set subquestion_html_$ctr [im_employee_evaluation_question_display $sub_question_id $employee_id $wf_task_name "" $print_p]}
     }
 
     if { $ctr != 5 } {
@@ -211,6 +211,7 @@ proc_doc im_employee_evaluation_question_display {
     employee_id
     wf_task_name 
     { edit_previous_response_p "f" }  
+    { print_p "f" } 
 } { 
     Returns a string of HTML to display for a question, suitable for embedding in a form.
     The form variable is of the form \"response_to_question.\$question_id
@@ -353,7 +354,7 @@ proc_doc im_employee_evaluation_question_display {
         "combined_type_one" {
             if {[catch {
 		if { $visible_p } {
-		    append html [create_html_combined_type_one $question_id $employee_id $wf_task_name]
+		    append html [create_html_combined_type_one $question_id $employee_id $wf_task_name $print_p]
 		} else {
 		    append html [lang::message::lookup "" intranet-employee-evaluation.NotVisible "\[-\]"]
 		}
@@ -365,7 +366,7 @@ proc_doc im_employee_evaluation_question_display {
        "combined_type_two" {
 	   if {[catch {
 	       if { $visible_p } {
-		   append html [create_html_combined_type_two $question_id $employee_id $wf_task_name]
+		   append html [create_html_combined_type_two $question_id $employee_id $wf_task_name $print_p]
 	       } else {
 		   append html [lang::message::lookup "" intranet-employee-evaluation.NotVisible "\[-\]"]
 	       }
@@ -416,10 +417,14 @@ proc_doc im_employee_evaluation_question_display {
             }
 
             if { $visible_p } {
-		if { $writeable_p } {
-		    append html "<textarea name=$element_name $presentation_options>$user_value</textarea>"
+		if { $print_p } {
+		    append html "<span class='ee-survey-textarea-print'>$user_value</span>"
 		} else {
-		    append html "<textarea style='background-color:#cccccc;' $presentation_options readonly>$user_value</textarea>"
+		    if { $writeable_p } {
+			append html "<textarea name=$element_name $presentation_options>$user_value</textarea>"
+		    } else {
+			append html "<textarea style='background-color:#cccccc;' $presentation_options readonly>$user_value</textarea>"
+		    }
 		}
             } else {
                 append html [lang::message::lookup "" intranet-employee-evaluation.NotVisible "\[-\]"]
@@ -594,6 +599,7 @@ ad_proc -public im_employee_evaluation_supervisor_component {
         return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound $msg]
     }
 
+
     if {[catch {
         db_1row get_project_data "
 		select 
@@ -627,7 +633,7 @@ ad_proc -public im_employee_evaluation_supervisor_component {
     db_foreach rec $sql {
 
        append html_lines "<tr>" 
-       append html_lines "<td>$name</td>" 
+       append html_lines "<td><a href='/intranet/user/view?user_id=$employee_id'>$name</a></td>" 
 
        # THIS YEAR  
        if { 0 != $employee_evaluation_id_this_year } {
@@ -732,12 +738,14 @@ ad_proc -public im_employee_evaluation_employee_component {
                 set project_id_this_year $project_id
                 set transition_name_printing_this_year $transition_name_printing
 		set workflow_key_this_year $workflow_key
+		set evaluation_year_this_year $evaluation_year
             }
             "Next" {
                 set evaluation_name_next_year $name
                 set project_id_next_year $project_id
                 set transition_name_printing_next_year $transition_name_printing
 		set workflow_key_next_year $workflow_key
+		set evaluation_year_next_year $evaluation_year
             }
         }
     }
@@ -820,13 +828,52 @@ ad_proc -public im_employee_evaluation_employee_component {
 		$html_lines
 	</table>
 	<br/>
-	<h3> [lang::message::lookup "" intranet-employee-evaluation.Objectives "Objectives"]</h3>
+	<h3> [lang::message::lookup "" intranet-employee-evaluation.Objectives "Objectives"] $evaluation_year_next_year</h3>
 	<table cellpadding='5' cellspacing='5' border='0'>
 		<tr class='rowtitle'>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Status"]</td>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.ToBeFinishedBy "Deadline"]</td>
 		</tr>
-		$html_lines
+    "
+
+    # Check if a WF had been started already
+    set sql "
+                select
+                        employee_evaluation_id,
+                        case_id
+                from
+                        im_employee_evaluations
+                where
+                        project_id = :project_id_next_year and
+                        employee_id = :current_user_id
+    "
+
+    if {[catch {
+        db_1row get_employee_evaluation_id $sql
+    } err_msg]} {
+        set employee_evaluation_id 0
+        set case_id 0
+    }
+
+    if { 0 != $employee_evaluation_id } {
+        set print_button "
+                <form action='/intranet-employee-evaluation/print-employee-evaluation' method='POST' target='_blank'>
+                <input type='hidden' name= 'transition_name_to_print' value='$transition_name_printing_next_year'>
+                <input type='hidden' name= 'employee_evaluation_id' value='$employee_evaluation_id'>
+                <input type='submit' value='[lang::message::lookup "" intranet-employee-evaluation.Print Print]'>
+                </form>
+        "
+	set status [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives entered"]
+    } else {
+        set print_button "[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]"
+	set status [lang::message::lookup "" intranet-employee-evaluation.ObjectivesNotYetEntered "Objectives not yet entered"]
+    }
+    
+    append html "
+                <tr class='rowtitle'>
+                        <td>$status</td>
+                        <td>$print_button</td>
+                </tr>
 	</table>
     "
     return $html

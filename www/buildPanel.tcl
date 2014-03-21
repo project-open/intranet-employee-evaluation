@@ -133,8 +133,8 @@ if {[info exists task]} {
 
 	foreach question_id $question_list {
 	    ns_log NOTICE "intranet-ee::buildPanel - Writing question id: $question_id, employee_id: $employee_id, task_name:$task_name"
-	    append tab_html_div [im_employee_evaluation_question_display $question_id $employee_id $task_name ""]
-	    ns_log NOTICE "intranet-ee::buildPanel - question_html: \n [im_employee_evaluation_question_display $question_id $employee_id $task_name ""]"  
+	    append tab_html_div [im_employee_evaluation_question_display $question_id $employee_id $task_name "" "f"]
+	    ns_log NOTICE "intranet-ee::buildPanel - question_html: \n [im_employee_evaluation_question_display $question_id $employee_id $task_name "" "f"]"  
 	}
         append tab_html_div "</div>\n\n"
 	incr ctr
@@ -189,7 +189,7 @@ if {[info exists task]} {
 	# Create HTML for each question 
 	foreach question_id [db_list get_group_questions $sql] {
 	    # ad_return_complaint xx "question_id: '$question_id', employee_id: '$employee_id', task_name: '$task_name'"
-	    append html [im_employee_evaluation_question_display $question_id $employee_id $task_name ""]
+	    append html [im_employee_evaluation_question_display $question_id $employee_id $task_name "" "f"]
 	}
 
 	if { "finished" != $task_status } {

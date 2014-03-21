@@ -50,7 +50,18 @@ ad_page_contract {
 } -validate {
 
     custom_validation {
-	set custom_validation_function [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CustomValidationFunction" -default ""]
+	set sql "
+		select 
+			eep.validation_function 
+		from 
+			im_employee_evaluation_processes eep,
+			im_employee_evaluations ee
+		where 
+			ee.survey_id = :survey_id 
+			and ee.project_id = eep.project_id
+	"
+	set custom_validation_function [db_string get_data $sql -default ""]
+
 	if { "" != $custom_validation_function } {
             set val_result [$custom_validation_function \
                                                 $survey_id \

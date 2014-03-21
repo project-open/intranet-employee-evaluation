@@ -33,7 +33,6 @@ set show_context_help_p 0
 set current_user_id [ad_maybe_redirect_for_registration]
 set admin_p [im_is_user_site_wide_or_intranet_admin $current_user_id]
 set today [lindex [split [ns_localsqltimestamp] " "] 0]
-set last_transition "Stage 6: Supervisor finishing"
 set name_order [parameter::get -package_id [apm_package_id_from_key intranet-core] -parameter "NameOrder" -default 1]
 set cust_line_break_function [db_string get_data "select line_break_function from im_employee_evaluation_processes where status = 'Current'" -default ""]
 
@@ -51,13 +50,19 @@ if {[catch {
 		ee.*,
 		to_char(p.start_date, 'YYYY-MM-DD') as start_date_pretty,
 		to_char(p.end_date,'YYYY-MM-DD') as end_date_pretty,
-                to_char(p.deadline_employee_evaluation,'YYYY-MM-DD') as deadline_pretty		
+                to_char(p.deadline_employee_evaluation,'YYYY-MM-DD') as deadline_pretty,
+		(select im_name_from_user_id(ee.employee_id, $name_order)) as employee_name,
+		(select im_name_from_user_id(ee.supervisor_id, $name_order)) supervisor_name,
+		(select im_category_from_id(e.location_id)) as employee_location,
+		(select im_category_from_id(e.role_function_id)) as employee_position
 	from 
 		im_employee_evaluations ee,
-		im_projects p
+		im_projects p,
+		im_employees e
 	where 
 		employee_evaluation_id = :employee_evaluation_id and 
-		p.project_id = ee.project_id
+		p.project_id = ee.project_id and
+		e.employee_id = ee.employee_id
     "
 } err_msg]} {
     global errorInfo
@@ -65,16 +70,29 @@ if {[catch {
     ad_return_complaint 1 "[lang::message::lookup "" intranet-employee-evaluation.ProblemDBAccess "There was a problem accessing the database:"] $errorInfo"
 }
 
-# Set Names
-set employee_name [db_string get_user_name "select im_name_from_user_id(:employee_id, $name_order)" -default ""]
-set supervisor_name [db_string get_user_name "select im_name_from_user_id(:supervisor_id, $name_order)" -default ""]
+set overall_performance ""
+set sql "
+       	select 
+		qr.choice_id
+       	from
+		survsimp_questions q,
+		survsimp_question_responses qr,
+		survsimp_responses r
+	where
+		q.question_text ~ 'Overall Performance Score'
+		and q.question_id = qr.question_id 
+		and r.response_id = qr.response_id
+		and r.related_object_id = :employee_id
+		and r.survey_id = :survey_id
+"
+if {[catch {
+    set overall_performance [db_string get_data $sql -default "not found"]
+} err_msg]} {
+    global errorInfo
+    ns_log Error $errorInfo
+    set overall_performance "not found"
+}
 
-# Set position
-# set employee_position [im_category_from_id [db_string get_role "select role_function_id from im_employees where employee_id = :employee_id" -default 0]]
-set employee_position "<position>"
-
-# Set location
-set employee_location "<location>"
 
 # Set Role 
 if { $current_user_id == $employee_id } {
@@ -115,33 +133,73 @@ if { "" != $transition_name_to_print } {
 # ---------------------------------------------------------------
 
 # Header
+
 set html_output "
 <table cellpadding='5' cellspacing='5' border='0'>
+        <tr>
+                <td align='left'><img src='/logo.gif' alt='' /></td>
+                <td><strong>CHAMP Cargosystems<br>PERFORMANCE REVIEW FORM</strong></td>
+        </tr>
+</table>"
+
+append html_output "
+<table cellpadding='5' cellspacing='5' border='0'>
 	<tr>
-        	<td>[lang::message::lookup "" intranet-employee-evaluation.Employee "Employee"]:</td>
-	        <td>$employee_name</td>
+        	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.Employee "Employee"]:</strong><br>$employee_name</td>
+	        <td><strong>[lang::message::lookup "" intranet-employee-evaluation.PerformancePeriod "Performance Period"]:</strong><br>$start_date_pretty - $end_date_pretty</td>
+		<td><strong>[lang::message::lookup "" intranet-employee-evaluation.DatePerformanceDialog "Date of Performance Dialog"]:</strong><br>_________________________</td>
 	</tr>
+		<tr><td colspan='3'>&nbsp;</td></tr>
 	<tr>
-        	<td>[lang::message::lookup "" intranet-employee-evaluation.Position "Position"]:</td>
-	        <td>$employee_position</td>
-	</tr>
+        	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.Position "Position"]:</strong><br>$employee_position</td>
+        	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.Location "Location"]:</strong><br>$employee_location</td>
+        	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.EvaluatingSupervisor "Evaluating Supervisor"]:</strong><br>$supervisor_name</td>
 	<tr>
-        	<td>[lang::message::lookup "" intranet-employee-evaluation.Location "Location"]:</td>
-	        <td>$employee_location</td>
-	</tr>
-	<tr>
-        	<td>[lang::message::lookup "" intranet-employee-evaluation.EvaluatingSupervisor "Evaluating Supervisor"]:</td>
-	        <td>$supervisor_name</td>
-	</tr>
-	<tr>
-        	<td>[lang::message::lookup "" intranet-employee-evaluation.PerformancePeriod "Performance Period"]:</td>
-        	<td>$start_date_pretty - $end_date_pretty</td>
-	</tr>
-	<tr>
-        	<td>[lang::message::lookup "" intranet-employee-evaluation.Deadline "Deadline"]:</td>
-        	<td>$deadline_pretty</td>
-	</tr>
 </table>
+<table cellpadding='5' cellspacing='5' border='0'>
+        <tr>
+                <td colspan='2'><h1>Section 1: Performance Plan Signatures</h1></td>
+        </tr>
+
+        <tr>
+                <td valign='top'>
+			<strong>Performance Plan Signatures--Employee</strong><br>
+			I understand my job and individual responsibilities, and my manager has discussed with me the performance expectations.<br>
+			<strong>Comments:</strong><br><br><br><br><br><br>
+		</td>
+                <td valign='top'>
+
+			<strong>Performance Plan Signatures--Supervisor/Manager</strong><br>
+			I have discussed the job and individual responsibilities, performance expectations with the employee.<br>
+                        <strong>Comments:</strong><br><br><br><br><br><br>
+		</td>
+        </tr>
+	<tr>
+                <td valign='top'>
+                        <strong>Signature:</strong> _________________________________<br><br>
+			<strong>Date:</strong> _________________________________<br>
+                </td>
+                <td valign='top'>
+                        <strong>Signature:</strong> _________________________________<br><br>
+			<strong>Date:</strong> _________________________________<br>
+                </td>
+        </tr>
+	<tr><td colspan='2'><br><br></td></tr>
+        <tr>
+                <td valign='top'>
+                        <strong>Overall performance:</strong> $overall_performance<br>
+                </td>
+                <td valign='top'>
+			<strong>Performance Plan Signatures--Supervisor/Manager N+1</strong><br><br>
+                        <strong>Signature:</strong> _________________________________<br><br>
+                        <strong>Date:</strong> _________________________________<br>
+                </td>
+        </tr>
+
+</table>
+
+
+<div class='page-break'></div>
 "
 
 foreach transition_key $transition_keys {
@@ -172,7 +230,7 @@ foreach transition_key $transition_keys {
 	if { "" != $cust_line_break_function } {
 	    append html_output [eval $cust_line_break_function $question_id {$question_text}]
 	}
-	append html_output [im_employee_evaluation_question_display $question_id $employee_id $transition_name ""]
+	append html_output [im_employee_evaluation_question_display $question_id $employee_id $transition_name "" "t"]
 	# ns_log NOTICE "intranet-ee::print-employee-evaluation - question_html: \n [im_employee_evaluation_question_display $question_id $employee_id $transition_name ""]"
     }
 }
