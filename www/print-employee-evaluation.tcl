@@ -73,7 +73,7 @@ if {[catch {
 set overall_performance ""
 set sql "
        	select 
-		qr.choice_id
+                (select label from survsimp_question_choices where choice_id = qr.choice_id) as choice_label
        	from
 		survsimp_questions q,
 		survsimp_question_responses qr,
