@@ -59,6 +59,7 @@ ad_page_contract {
 		where 
 			ee.survey_id = :survey_id 
 			and ee.project_id = eep.project_id
+                        and ee.employee_id = :related_object_id
 	"
 	set custom_validation_function [db_string get_data $sql -default ""]
 

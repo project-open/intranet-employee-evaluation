@@ -115,7 +115,6 @@ if { $current_user_id == $employee_id } {
 set wf_in_progress_p 0
 set wf_in_progress_p [db_string get_data "select count(*) from wf_tasks where case_id = :case_id and state = 'enabled'" -default 0]
 
-
 if { "" != $transition_name_to_print } {
     set transition_keys [db_list get_transition_keys "select transition_key from wf_transitions where workflow_key = :workflow_key and transition_name = :transition_name_to_print"]
 } else {
@@ -139,6 +138,7 @@ set html_output "
         <tr>
                 <td align='left'><img src='/logo.gif' alt='' /></td>
                 <td><strong>CHAMP Cargosystems<br>PERFORMANCE REVIEW FORM</strong></td>
+                <td align='right'>$evaluation_year</td>
         </tr>
 </table>"
 
@@ -164,14 +164,12 @@ append html_output "
         <tr>
                 <td valign='top'>
 			<strong>Performance Plan Signatures--Employee</strong><br>
-			I understand my job and individual responsibilities, and my manager has discussed with me the performance expectations.<br>
-			<strong>Comments:</strong><br><br><br><br><br><br>
+			I understand my job and individual responsibilities, and my manager has discussed with me the performance expectations.<br><br><br>
 		</td>
                 <td valign='top'>
 
 			<strong>Performance Plan Signatures--Supervisor/Manager</strong><br>
-			I have discussed the job and individual responsibilities, performance expectations with the employee.<br>
-                        <strong>Comments:</strong><br><br><br><br><br><br>
+			I have discussed the job and individual responsibilities, performance expectations with the employee.<br><br><br>
 		</td>
         </tr>
 	<tr>
