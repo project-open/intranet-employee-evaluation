@@ -169,7 +169,8 @@ create table im_employee_evaluation_processes (
        project_id			integer
 					constraint project_id_fk
                                         references im_projects
-					NOT NULL,
+					NOT NULL
+					UNIQUE,
        survey_name			varchar(100)
        					NOT NULL,
        workflow_key			varchar(50),					
@@ -346,6 +347,42 @@ begin
                 10,                              -- sort_order
                 'im_employee_evaluation_supervisor_component $current_user_id' -- component_tcl
         ) into v_plugin_id;
+
+        select group_id into v_employees from groups where group_name = 'Employees';
+        PERFORM im_grant_permission(v_plugin_id, v_employees, 'read');
+
+        return 0;
+
+end;$BODY$ LANGUAGE 'plpgsql';
+SELECT inline_0 ();
+DROP FUNCTION inline_0 ();
+
+
+-- Component Plugin Filestorage EE
+CREATE OR REPLACE FUNCTION inline_0 ()
+RETURNS INTEGER AS $BODY$
+
+declare
+        v_count               integer;
+        v_plugin_id           integer;
+        v_employees           integer;
+begin
+
+	SELECT im_component_plugin__new (
+               null,								-- plugin_id
+	       'im_component_plugin',						-- object_type
+	       now(),	       							-- creation_date
+               null,								-- creation_user
+               null,								-- creation_ip
+               null,								-- context_id
+               'Employee Evaluation Filestorage Component',  			-- plugin_name
+               'intranet-employee-evaluation/',         			-- package_name
+               'right',								-- location
+               '/intranet-employee-evaluation/index',         			-- page_url
+               null,								-- view_name
+               90,                             					-- sort_order
+               'im_filestorage_employee_evaluation_component $current_user_id $current_user_id $name $return_url' -- component_tcl
+	) into v_plugin_id;
 
         select group_id into v_employees from groups where group_name = 'Employees';
         PERFORM im_grant_permission(v_plugin_id, v_employees, 'read');
