@@ -79,7 +79,7 @@ set sql "
 		survsimp_question_responses qr,
 		survsimp_responses r
 	where
-		q.question_text ~ 'Overall Performance Score'
+		q.question_text = '%<strong>Overall Performance Score:</strong>%'
 		and q.question_id = qr.question_id 
 		and r.response_id = qr.response_id
 		and r.related_object_id = :employee_id
