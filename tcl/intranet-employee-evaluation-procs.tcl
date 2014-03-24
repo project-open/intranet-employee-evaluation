@@ -633,7 +633,7 @@ ad_proc -public im_employee_evaluation_supervisor_component {
     db_foreach rec $sql {
 
        append html_lines "<tr>" 
-       append html_lines "<td><a href='/intranet/user/view?user_id=$employee_id'>$name</a></td>" 
+       append html_lines "<td><a href='/intranet/users/view?user_id=$employee_id'>$name</a></td>" 
 
        # THIS YEAR  
        if { 0 != $employee_evaluation_id_this_year } {
@@ -641,7 +641,7 @@ ad_proc -public im_employee_evaluation_supervisor_component {
 	   set sql "select task_id from wf_task_assignments where task_id in (select task_id from wf_tasks where case_id = :case_id_this_year and state = 'enabled') and party_id = :current_user_id"
 	   set current_task_id [db_string get_task_id $sql -default 0]
 	   if { 0 != $current_task_id } {
-	       set continue_btn "<button style='margin-top:-10px' onclick=\"location.href='/acs-workflow/task?task_id=$current_task_id'\">Next step</button>"
+	       set continue_btn "<button style='margin-top:-10px' onclick=\"location.href='/acs-workflow/task?task_id=$current_task_id'\"><nobr>Next Step</nobr></button>"
 	   } else {
 	       set continue_btn [lang::message::lookup "" intranet-employee-evaluation.WaitingForEmployee "Waiting"]
 	   }
@@ -661,21 +661,17 @@ ad_proc -public im_employee_evaluation_supervisor_component {
        # NEXT YEAR 
        if { 0 != $employee_evaluation_id_next_year } {
 	   append html_lines "<td> [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives entered"]</td>"
-	   set ttt {
-	       # set sql "select count(*) from wf_task_assignments where task_id in (select task_id from wf_tasks where case_id = :case_id_next_year and state = 'enabled') and party_id = :current_user_id"
-	       if { [db_string get_data $sql -default 0] } {
-		   append html_lines "<td> [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives entered"]</td>"
-	       } else {
-		   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_next_year&employee_id=$employee_id&survey_name=$survey_name_next_year"
-		   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
-	       }
-	   }
+          # Button 'Print'
+           set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id_next_year&transition_name_to_print=$transition_name_printing_next_year"
+           append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</butto
+n></td>"
        } else {
 	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_next_year&employee_id=$employee_id&survey_name=$survey_name_next_year"
 	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
-       }
+	   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]</td>" 
+      }
        # Print
-       append html_lines "<td>&nbsp;</td>"
+ 
        append html_lines "</tr>" 
     }
  
@@ -910,43 +906,33 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
         return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound $msg]
     }
 
-    # Total participants 
-    set sql "
-    	select
-		count(*)
-		-- rels.object_id_two as user_id, 
-		-- rels.object_id_two as party_id, 
-		-- im_email_from_user_id(rels.object_id_two) as email,
-		-- im_name_from_user_id(rels.object_id_two, 1) as name
-	from
-		acs_rels rels
-		LEFT OUTER JOIN im_biz_object_members bo_rels ON (rels.rel_id = bo_rels.rel_id)
-		LEFT OUTER JOIN im_categories c ON (c.category_id = bo_rels.object_role_id)
-	where
-		rels.object_id_one = :project_id_this_year and
-		rels.object_id_two in (select party_id from parties) and
-		rels.object_id_two not in (
-		   -- Exclude banned or deleted users
-		   select     m.member_id
-		   from     group_member_map m,
-		   membership_rels mr
-		   where     m.rel_id = mr.rel_id and
-		   m.group_id = acs__magic_object_id('registered_users') and
-		   m.container_id = m.group_id and
-		   mr.member_state != 'approved'
-		) 
-		and rels.object_id_two in (select member_id from group_distinct_member_map m where group_id = [im_employee_group_id]);
-    "
+    # Get total number of employees
+    set sql "select count(*) from acs_rels where object_id_one = :project_id_this_year and rel_type = 'im_biz_object_member'"
     set total_participants [db_string get_total_participants $sql -default 0]
 
     set html_output "<strong>[lang::message::lookup "" intranet-employee-evaluation.TotalParticipants "Total Participants"]:</strong> $total_participants <br/><br/>"
     append html_output "<strong>[lang::message::lookup "" intranet-employee-evaluation.ActiveWorkflows: "Active Workflows"]:</strong> &nbsp;"
 
+    # Get finished cases 
+    set sql "
+	select 
+		count(*)
+	from 
+		im_employee_evaluations ee, 
+		wf_tasks t
+	where 
+		t.case_id = ee.case_id
+		and ee.project_id = :project_id_this_year
+		and t.state = 'finished'
+		and t.workflow_key = :workflow_key_this_year
+    "
+    set count_finished_wfs [db_string get_count_finished_wfs $sql -default 0]
+
     # Statistics 'Places'
     set sql "
       select 
 	 (select place_name from wf_places where place_key = t.place_key and workflow_key=:workflow_key_this_year) as place_name,
-	 count(*) as amount
+	 count(*) as count_cases
       from 
     	 wf_tokens t
       where 
@@ -958,26 +944,26 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
      group by 
      	   place_name
      order by 
-	   amount
+	   count_cases
      "
 
-    set status_table_lines_html ""
+    set status_table_lines_html_active ""
     db_foreach r $sql {
-	if { 0 != $amount } {
-	    set percentage [expr 100 * $amount / $total_participants]
+	if { 0 != $count_cases } {
+	    set percentage [expr 100 * $count_cases / $total_participants]
 	} else {
 	    set percentage 0 
 	}
-	append status_table_lines_html "
+	append status_table_lines_html_active "
 		<tr>
 		<td>$place_name</td>
-       		<td align='right'>$amount</td>
+       		<td align='right'>$count_cases</td>
 		<td align='right'>${percentage}%</td>
 		</tr>
 	"
     }
-    
-    if { "" != $status_table_lines_html } {
+ 
+    if { "" != $status_table_lines_html_active || 0 != $count_finished_wfs } {
 	append html_output "
 		<br/><br/>
 		<table cellpadding='5' cellspacing='5' border='0'>
@@ -986,7 +972,12 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
                 	<td class='rowtitle' align='center'>[lang::message::lookup "" intranet-employee-evaluation.NumberCases "Number<br/>Cases"]</td>
                 	<td class='rowtitle' align='center'>[lang::message::lookup "" intranet-employee-evaluation.Percent "Percent"]</td>
                 	</tr>
-			$status_table_lines_html
+			$status_table_lines_html_active
+	                <tr>
+        	        	<td>[lang::message::lookup "" intranet-employee-evaluation.Finished "Finished"]</td>
+                        	<td align='right'>$count_finished_wfs</td>
+	                	<td align='right'>[expr 100 * $count_finished_wfs/$total_participants]%</td>
+        	        </tr>
 		</table>"
     } else {
 	append html_output [lang::message::lookup "" intranet-employee-evaluation.NoWorkflowsStartedYet "No workflows started yet"]
@@ -997,4 +988,10 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
 }
 
 
-
+ad_proc im_filestorage_employee_evaluation_component { user_id user_to_show_id user_name return_url} {
+    Filestorage for Employee Evaluation
+} {
+    set user_path [im_filestorage_user_path $user_id]
+    set folder_type "user"
+    return [im_filestorage_base_component $user_id $user_to_show_id $user_name $user_path $folder_type]
+}

@@ -14,12 +14,9 @@
 # See the GNU General Public License for more details.
 
 ad_page_contract {
-   
-    This script allows printing the Employee Evaluation based on WF status. 
-    
+    This script allows printing the Employee Evaluation
     @param employee_evaluation_id
     @author klaus.hofeditz@project-open.com
-
 } {
     employee_evaluation_id:integer 
     { transition_name_to_print "" }
@@ -48,6 +45,7 @@ if {[catch {
     db_1row get_employee_evaluation_data "
 	select 
 		ee.*,
+		ep.evaluation_year,
 		to_char(p.start_date, 'YYYY-MM-DD') as start_date_pretty,
 		to_char(p.end_date,'YYYY-MM-DD') as end_date_pretty,
                 to_char(p.deadline_employee_evaluation,'YYYY-MM-DD') as deadline_pretty,
@@ -58,11 +56,13 @@ if {[catch {
 	from 
 		im_employee_evaluations ee,
 		im_projects p,
-		im_employees e
+		im_employees e,
+		im_employee_evaluation_processes ep
 	where 
-		employee_evaluation_id = :employee_evaluation_id and 
-		p.project_id = ee.project_id and
-		e.employee_id = ee.employee_id
+		employee_evaluation_id = :employee_evaluation_id
+		and p.project_id = ee.project_id 
+		and e.employee_id = ee.employee_id 
+		and ee.project_id = ep.project_id 
     "
 } err_msg]} {
     global errorInfo
@@ -134,11 +134,11 @@ if { "" != $transition_name_to_print } {
 # Header
 
 set html_output "
-<table cellpadding='5' cellspacing='5' border='0'>
+<table cellpadding='5' cellspacing='5' border='0' width='100%'>
         <tr>
                 <td align='left'><img src='/logo.gif' alt='' /></td>
-                <td><strong>CHAMP Cargosystems<br>PERFORMANCE REVIEW FORM</strong></td>
-                <td align='right'>$evaluation_year</td>
+                <td><span style='font-size:1.5em;font-weight:bold'>CHAMP Cargosystems<br>PERFORMANCE REVIEW FORM</span></td>
+                <td align='right'><span style='font-size:4em;font-weight:bold'>$evaluation_year</span></td>
         </tr>
 </table>"
 
