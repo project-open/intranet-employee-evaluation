@@ -22,6 +22,234 @@ ad_library {
 # New question Type: "Combined Type One"
 # -----------------------------------------------------------
 
+ad_proc -public im_employee_evaluation_supervisor_upload_component {
+    current_user_id
+} {
+    Provides links and status information for Employee Evaluation
+} {
+
+    # Check if current user is supervisor of an employee
+    set number_direct_reports [db_string get_number_direct_reports "select count(*) from im_employees where supervisor_id = :current_user_id" -default 0]
+    if { 0 == $number_direct_reports } {return "" }
+    set name_order [parameter::get -package_id [apm_package_id_from_key intranet-core] -parameter "NameOrder" -default 1]
+
+    set html_lines ""
+    set deadline_employee_evaluation ""
+    set start_date ""
+    set end_date ""
+
+    db_foreach r "select * from im_employee_evaluation_processes where status in ('Current','Next')" {
+	switch $status {
+	    Current {
+		set evaluation_name_this_year $name
+		set survey_name_this_year $survey_name
+		set project_id_this_year $project_id
+		set transition_name_printing_this_year $transition_name_printing
+		set evaluation_year_this_year $evaluation_year
+	    }
+	    Next {
+		set evaluation_name_next_year $name
+		set survey_name_next_year $survey_name
+		set project_id_next_year $project_id		
+		set transition_name_printing_next_year $transition_name_printing
+                set evaluation_year_next_year $evaluation_year
+	    }
+	}
+    }
+    if { ![info exists evaluation_name_this_year] || ![info exists evaluation_name_this_year] } {
+        set msg "Can not show PORTLET. No data for Employee Evaluation Processes found. Table 'im_employee_evaluation_processes' needs to have at least one record with status 'Current' and one with status 'Next'. Please contact your System Administrator."
+        return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound $msg]
+    }
+
+
+    if {[catch {
+        db_1row get_project_data "
+		select 
+	        	project_name, 
+			to_char(start_date, 'YYYY-MM-DD') as start_date_pretty, 
+			to_char(end_date, 'YYYY-MM-DD') as end_date_pretty, 
+			to_char(deadline_employee_evaluation, 'YYYY-MM-DD') as deadline_employee_evaluation_pretty 
+		from im_projects where project_id = :project_id_this_year"
+    } err_msg]} {
+        global errorInfo
+        ns_log Error $errorInfo
+        return "Can't show PORTLET. [lang::message::lookup "" intranet-core.Db_Error "Database error:"] $errorInfo"
+    }
+
+
+    # Get directs
+    set sql "
+        select
+                e.employee_id,
+                im_name_from_user_id(e.employee_id, :name_order) as name,
+                COALESCE((select employee_evaluation_id from im_employee_evaluations where project_id=:project_id_this_year and employee_id = e.employee_id),0) as employee_evaluation_id_this_year,
+                COALESCE((select case_id from im_employee_evaluations where project_id=:project_id_this_year and employee_id = e.employee_id),0) as case_id_this_year,
+                COALESCE((select employee_evaluation_id from im_employee_evaluations where project_id=:project_id_next_year and employee_id = e.employee_id),0) as employee_evaluation_id_next_year,
+                COALESCE((select case_id from im_employee_evaluations where project_id=:project_id_next_year and employee_id = e.employee_id),0) as case_id_next_year
+        from
+                im_employees e
+        where
+    		e.supervisor_id = :current_user_id
+    "
+
+    db_foreach rec $sql {
+
+       append html_lines "<tr>" 
+       append html_lines "<td><a href='/intranet/users/view?user_id=$employee_id'>$name</a></td>" 
+
+       # THIS YEAR  
+       if { 0 != $employee_evaluation_id_this_year } {
+	   # Button Continue/Nothing to do 
+	   set sql "select task_id from wf_task_assignments where task_id in (select task_id from wf_tasks where case_id = :case_id_this_year and state = 'enabled') and party_id = :current_user_id"
+	   set current_task_id [db_string get_task_id $sql -default 0]
+	   if { 0 != $current_task_id } {
+	       set continue_btn "<button style='margin-top:-10px' onclick=\"location.href='/acs-workflow/task?task_id=$current_task_id'\"><nobr>Next Step</nobr></button>"
+	   } else {
+	       set sql "select count(*) from wf_cases where case_id = :case_id_this_year and state = 'finished'"
+	       if { [db_string get_task_id $sql -default 0] } {
+		   set continue_btn "<span style='color:green'>[lang::message::lookup "" intranet-employee-evaluation.Finished "Finished"]</span>"
+	       } else {
+		   set continue_btn "<span style='color:orange'>[lang::message::lookup "" intranet-employee-evaluation.WaitingForEmployee "Waiting"]</span>"
+	       }
+	   }
+           append html_lines "<td>$continue_btn</td>"
+
+	   # Button 'Print'
+	   set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id_this_year&transition_name_to_print=$transition_name_printing_this_year"
+	   #append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$print_link'\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
+	   append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
+
+       } else {
+	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_this_year&employee_id=$employee_id&survey_name=$survey_name_this_year"
+	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
+	   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]</td>"
+       }
+
+       # ----------------------------------
+       # Uploading column 
+       # ----------------------------------
+       set object_id $employee_id
+       set bread_crum_path "employee_evaluation/$evaluation_year_this_year"
+       set folder_type "user"
+       set return_url "/intranet-employee-evaluation/"
+
+       set upload_form "
+		<form enctype='multipart/form-data' method='POST' action=/intranet-filestorage/upload-2.tcl>
+				[export_form_vars bread_crum_path folder_type object_id return_url]
+				<input type='file' name='upload_file' size='10'><input type=submit value=\"[lang::message::lookup "" intranet-employee-evaluation.Upload "Upload"]\">
+		</form>
+       "
+
+       # Make sure we have a folder to upload to 
+       set path "[parameter::get -package_id [apm_package_id_from_key intranet-filestorage] -parameter "UserBasePathUnix" -default ""]/${employee_id}/${bread_crum_path}"
+       if { [file exists $path] } {
+	   if { ![file writable $path] || "" == $path } {
+	       set help_txt_def "You are not allowed to upload files to $path/employee_evaluation/$evaluation_year_this_year. Please contact your System Administrator"
+	       set help_txt [lang::message::lookup "" intranet-employee-evaluation.NoWritePermissions $help_txt_def]
+               append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.UploadNotAvailable "Not available"]&nbsp;<img src='/intranet/images/navbar_default/help.png' "
+               append html_lines "title='$help_txt' alt='$help_txt'></td>"
+	   } else {
+	       append html_lines "<td>$upload_form</td>"       
+	   }
+       } else {
+	   file mkdir $path
+	   append html_lines "<td>$upload_form</td>"       
+       }
+
+       # ----------------------------------
+       # Uploaded column
+       # ----------------------------------
+
+       set column_uploaded_content ""
+       set base_path_depth [llength [split $path "/"]]
+
+       if { [catch {
+	   # Executing the find command
+	   set file_list [exec [im_filestorage_find_cmd] $path -noleaf]
+	   set files [lsort [split $file_list "\n"]]
+	   # remove the first (root path) from the list of files returned by "find".
+	   set files [lrange $files 1 [llength $files]]
+
+	   foreach file $files {
+	       # decode to utf-8
+	       encoding convertto $file
+	       set file_paths [split $file "/"]
+	       set file_paths_len [llength $file_paths]
+	       set rel_path_list [lrange $file_paths $base_path_depth $file_paths_len]
+	       # set rel_path [join $rel_path_list "/"]
+	       set current_depth [llength $rel_path_list]
+	       
+	       # Get more information about the file
+	       set file_body [lindex $rel_path_list [expr $current_depth -1]]
+       
+	       append column_uploaded_content "$file_body<br>"
+	   }
+	   if { "" == $column_uploaded_content } {set column_uploaded_content [lang::message::lookup "" intranet-employee-evaluation.NoFilesUploadedYet "None"] }
+	   append html_lines "<td>$column_uploaded_content</td>"
+       } err_msg] } {
+           append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NoFilesFound "-"]</td>"
+       }
+       
+       # Empty column to separate last year from current year 
+       append html_lines "<td></td>"
+
+       # NEXT YEAR 
+       if { 0 != $employee_evaluation_id_next_year } {
+	   append html_lines "<td> [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives<br>entered"]</td>"
+          # Button 'Print'
+           set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id_next_year&transition_name_to_print=$transition_name_printing_next_year"
+           append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
+       } else {
+	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_next_year&employee_id=$employee_id&survey_name=$survey_name_next_year"
+	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
+	   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]</td>" 
+      }
+       # Print
+       append html_lines "</tr>" 
+    }
+ 
+    set html "
+	<!--[lang::message::lookup "" intranet-employee-evaluation.TitlePortletSupervisor "Please manage the Employee Performance Evaluation of your Direct Reports from here."]<br/>-->
+	<!--
+	<table cellpadding='5' cellspacing='5' border='0'>
+	<tr>
+	<td>[lang::message::lookup "" intranet-core.StartDate "Start Date"]:</td>
+	<td>$start_date_pretty</td>
+	</tr>
+	<tr>
+	<td>[lang::message::lookup "" intranet-core.EndDate "End Date"]:</td>
+	<td>$end_date_pretty</td>
+	</tr>
+	<tr>
+	<td>[lang::message::lookup "" intranet-employee-evaluation.Deadline "Deadline"]:</td>
+	<td>$deadline_employee_evaluation_pretty</td>
+	</tr>
+	</table>
+	-->
+
+	<table cellpadding='5' cellspacing='5' border='0>
+		<tr class='rowtitle'>
+			<td> &nbsp;</td>
+			<td class='rowtitle' colspan='4'>$evaluation_name_this_year</td>
+			<td> &nbsp;&nbsp;&nbsp;</td>
+			<td class='rowtitle' colspan='2'>$evaluation_name_next_year</td>
+		</tr>
+		<tr class='rowtitle'>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Name"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Workflow "Workflow"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Upload "Upload"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Uploaded "Uploaded"]</td>
+			<td></td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Workflow "Workflow"]</td>
+			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</td>
+		</tr>
+		$html_lines
+	</table>
+    "
+    return $html
+}
+
 ad_proc -public create_html_combined_type_one {
     question_id
     employee_id
