@@ -66,7 +66,7 @@ if {[catch {
 }
 
 # Permissions
-if { $current_user_id != $supervisor_id || $current_user_id != $employee_id } {
+if { !($current_user_id != $supervisor_id || $current_user_id != $employee_id) } {
     ad_return_complaint 1 [lang::message::lookup "" intranet-employee-evaluation.NoPermission "You do not have the permission to view or print this evaluation."]
 }
 
