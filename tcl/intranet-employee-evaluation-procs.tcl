@@ -643,7 +643,12 @@ ad_proc -public im_employee_evaluation_supervisor_component {
 	   if { 0 != $current_task_id } {
 	       set continue_btn "<button style='margin-top:-10px' onclick=\"location.href='/acs-workflow/task?task_id=$current_task_id'\"><nobr>Next Step</nobr></button>"
 	   } else {
-	       set continue_btn [lang::message::lookup "" intranet-employee-evaluation.WaitingForEmployee "Waiting"]
+	       set sql "select count(*) from wf_cases where case_id = :case_id_this_year and state = 'finished'"
+	       if { [db_string get_task_id $sql -default 0] } {
+		   set continue_btn "<span style='color:green'>[lang::message::lookup "" intranet-employee-evaluation.Finished "Finished"]</span>"
+	       } else {
+		   set continue_btn "<span style='color:orange'>[lang::message::lookup "" intranet-employee-evaluation.WaitingForEmployee "Waiting"]</span>"
+	       }
 	   }
            append html_lines "<td>$continue_btn</td>"
 
@@ -663,8 +668,7 @@ ad_proc -public im_employee_evaluation_supervisor_component {
 	   append html_lines "<td> [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives entered"]</td>"
           # Button 'Print'
            set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id_next_year&transition_name_to_print=$transition_name_printing_next_year"
-           append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</butto
-n></td>"
+           append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
        } else {
 	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_next_year&employee_id=$employee_id&survey_name=$survey_name_next_year"
 	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
@@ -677,7 +681,7 @@ n></td>"
  
     set html "
 	<!--[lang::message::lookup "" intranet-employee-evaluation.TitlePortletSupervisor "Please manage the Employee Performance Evaluation of your Direct Reports from here."]<br/>-->
-	<table cellpadding='0' cellspacing='0' border='0'>
+	<table cellpadding='5' cellspacing='5' border='0'>
 	<tr>
 	<td>[lang::message::lookup "" intranet-core.StartDate "Start Date"]:</td>
 	<td>$start_date_pretty</td>
@@ -919,12 +923,11 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
 		count(*)
 	from 
 		im_employee_evaluations ee, 
-		wf_tasks t
+		wf_cases c
 	where 
-		t.case_id = ee.case_id
+		c.case_id = ee.case_id
 		and ee.project_id = :project_id_this_year
-		and t.state = 'finished'
-		and t.workflow_key = :workflow_key_this_year
+		and c.state = 'finished'
     "
     set count_finished_wfs [db_string get_count_finished_wfs $sql -default 0]
 
