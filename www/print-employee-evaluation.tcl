@@ -72,19 +72,23 @@ if {[catch {
 
 set overall_performance ""
 set sql "
-       	select 
+        select
                 (select label from survsimp_question_choices where choice_id = qr.choice_id) as choice_label
-       	from
-		survsimp_questions q,
-		survsimp_question_responses qr,
-		survsimp_responses r
-	where
-		lower(q.question_text) ~ lower('<strong>Overall Performance Score:</strong>')
-		and q.question_id = qr.question_id 
-		and r.response_id = qr.response_id
-		and r.related_object_id = :employee_id
-		and r.survey_id = :survey_id
+        from
+                survsimp_questions q,
+                survsimp_question_responses qr,
+                survsimp_responses r
+        where
+                lower(q.question_text) ~ lower('<strong>Overall Performance Score:</strong>')
+                and q.question_id = qr.question_id
+                and r.response_id = qr.response_id
+                and r.related_object_id = :employee_id
+                and r.survey_id = :survey_id
+        order by
+                r.response_id DESC
+        limit 1
 "
+
 if {[catch {
     set overall_performance [db_string get_data $sql -default "not found"]
 } err_msg]} {
