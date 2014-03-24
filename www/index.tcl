@@ -30,7 +30,6 @@ ad_page_contract {
 # ---------------------------------------------------------------------
 
 set current_user_id [ad_maybe_redirect_for_registration]
+set name [im_name_from_user_id $current_user_id]
 set page_title [lang::message::lookup "" intranet-employee-evaluation.TitleIndex "Employee Evaluation"]
-
-
-
+set return_url "/intranet-employee-evaluation/"

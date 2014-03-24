@@ -23,8 +23,14 @@ ad_page_contract {
 
 set current_user_id [ad_maybe_redirect_for_registration]
 set next_task_id [db_string get_next_task_id "select task_id from wf_tasks where case_id=:case_id and state='enabled'" -default 0]
+
 if { 0 == $next_task_id } {
-    ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.NoTaskFound "Did not find task, please contact your System Administrator"]
+    # Check if finished 
+    if { ![db_string get_next_task_id "select count(*) from wf_tasks where case_id=:case_id and state='finished'" -default 0] } {
+	ad_return_complaint 1  [lang::message::lookup "" intranet-employee-evaluation.NoTaskFound "Did not find task, please contact your System Administrator"]
+    } else {
+	ad_returnredirect "/intranet-employee-evaluation/"
+    }
 } 
 
 # Clarify: Security check necessary? Is user allowed to see that task 
