@@ -224,7 +224,8 @@ foreach transition_key $transition_keys {
       		pgm.group_id = g.group_id and 
 		ssq.question_id = gqm.question_id 
 	order by 
-		gqm.sort_key
+		-- gqm.sort_key
+		ssq.sort_key
     "
     db_foreach r $sql {
         ns_log NOTICE "intranet-ee::print-employee-evaluation - Writing question id: $question_id, employee_id: $employee_id, task_name:$transition_name"
