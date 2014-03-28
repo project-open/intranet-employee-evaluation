@@ -49,8 +49,8 @@ if {[info exists task]} {
 
     set return_url [im_url_with_query]
     set related_object_id $employee_id
-
     set html ""
+
     set tab_html_li ""
     set tab_html_div ""
 
@@ -248,56 +248,3 @@ if {[info exists task]} {
     set today [lindex [split [ns_localsqltimestamp] " "] 0]
 
 }
-
-
-set ttt {
-
-    set return_url ""
-    if {[info exists task(return_url)]} { set return_url $task(return_url) }
-    set survey_id [db_string pid "select object_id from wf_cases where case_id = :case_id" -default ""]
-    
-    
-    # Get all groups for this panel 
-    set sql "
-	select 
-		pgm.group_id
-	from 
-		im_employee_evaluation_panel_group_map pgm,
-	where 
-		pgm.wf_transition_name = :wf_transition_name
-	order by
-		pgm.sort_key
-"  
-    set group_id_list [db_list get_groups_for_panel $sql] 
-
-
-    foreach group_id $group_id_list {
-	# Create HTML for all active questions 
-	set sql "
-		select 
-	        	gqm.question_id
-		from 
-			im_employee_evaluation_group_questions_map gqm,
-			survsimp_questions q
-		where 
-			gqm.grouping_type = 'display'
-			and gqm.group_id = $group_id
-			and gqm.question_id in (select parent_question_id from im_employee_evaluation_questions_tree)
-			and gqm.question_id = q.question_id
-			and q.active_p == true
-		order by
-			sort_key
-   " 
-
-   db_foreach question_id $sql {
-       append html_output [im_employee_evaluation_get_question_html $question_id] 
-       # add group seperator ??
-    }
-    }
-    return $html_output
-}
-
-
-
-
-

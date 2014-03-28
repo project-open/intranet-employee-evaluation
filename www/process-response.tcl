@@ -496,7 +496,24 @@ if { "" != $task_id && "" != $save_and_finish_btn } {
     }
 } else {
     # Save button
-    ad_returnredirect "/acs-workflow/task?task_id=$task_id"
+    # Handle special case that Objectives for next year have been entered
+    set sql "
+	select 
+		eep.status 
+	from 
+		im_employee_evaluation_processes eep,
+		im_employee_evaluations ee
+	where 
+		ee.survey_id = :survey_id 
+		and ee.project_id = eep.project_id
+		and ee.employee_id = :related_object_id 		
+    "
+    set status [db_string get_status $sql -default ""]
+    if { "Next" == $status } {
+	ad_returnredirect "/intranet-employee-evaluation/handle-next-year-save-action?task_id=$task_id"	
+    } else {
+	ad_returnredirect "/acs-workflow/task?task_id=$task_id"
+    }
 }
 
 
