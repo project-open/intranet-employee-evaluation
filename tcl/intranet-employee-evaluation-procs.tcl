@@ -196,15 +196,19 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
        # Empty column to separate last year from current year 
        append html_lines "<td></td>"
 
+       # ####################################
        # NEXT YEAR 
+       # ####################################
+
        if { 0 != $employee_evaluation_id_next_year } {
+	   # set task_id [db_string get_task_id "select task_id from wf_tasks where case_id = :case_id_next_year and state = 'enabled'" -default 0]
 	   append html_lines "<td> [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives<br>entered"]</td>"
           # Button 'Print'
            set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id_next_year&transition_name_to_print=$transition_name_printing_next_year"
            append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
        } else {
 	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_next_year&employee_id=$employee_id&survey_name=$survey_name_next_year"
-	   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
+	   append html_lines "<td><button class='start_next_year' href='$start_link' style='margin-top:-10px'>[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
 	   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]</td>" 
       }
        # Print
@@ -249,6 +253,17 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
 		</tr>
 		$html_lines
 	</table>
+	<script type='text/javascript'>
+	\$(document).ready(function() {
+	  \$('.start_next_year').click(function() {
+    	  if (confirm('Objectives for the current year can be only entered ONCE. Are you sure you want to continue?')) {
+	      var url = \$(this).attr('href');	
+	      window.location.assign(url);
+    	  }
+  	  });
+	});
+	</script>
+
     "
     return $html
 }
