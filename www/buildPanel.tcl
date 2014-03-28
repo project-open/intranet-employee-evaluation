@@ -88,10 +88,10 @@ if {[info exists task]} {
 		and g.grouping_type = 'panel'
     "	
     set group_id [db_string get_group_id $sql -default 0] 
-
+  
     append html "<form action='/intranet-employee-evaluation/process-response' enctype='multipart/form-data' method='post' id='myForm'>"
     append html "[export_vars -form { survey_id return_url related_object_id task_id task_name group_id role}]"
-
+    append html "<input type='hidden' name='action_save' id='action_save' />"    
     ns_log NOTICE "intranet-ee::buildPanel - survey_id: $survey_id, task_id: $task_id, task_name: $task_name, group_id: $group_id, role: $role"
 
     # Check if there are TAB's on this page 
@@ -168,12 +168,16 @@ if {[info exists task]} {
 			<li style='font-seize: 80%'>Save and Finish Stage: The next 'Workflow Task' will be triggered. It's owner will be informed that you have finished your part.</li>
 		</ul>
 		<script type='text/javascript'>
+		    \$(document).ready(function () {
+		       \$(':submit').click(function () { \$('#action_save').val(this.name); });
+		    });
 		\$('#myForm').submit(function(e){
-		    if (!confirm('This page contains multiple SECTIONS (Employee Performance, Manager Performance, Objectives, Development Plan). To continue, please confirm that you have reviewed all of them.'))
-		    {
-		        e.preventDefault();
-		        return;
-		    } 
+		    if ( \$('#action_save').val()=='save_and_finish_btn') {
+			    if (!confirm('This page contains multiple SECTIONS (Employee Performance, Manager Performance, Objectives, Development Plan). To continue, please confirm that you have reviewed all of them.')) {
+			        e.preventDefault();
+			        return;
+			    }
+		    }
 		});
        		</script>
 	"
