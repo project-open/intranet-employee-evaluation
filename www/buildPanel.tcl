@@ -209,15 +209,15 @@ if {[info exists task]} {
 	    append html "<br/><hr/><br/>
                 <table cellpadding='0' cellspacing='0' border='0' width='100%'><tr><td align='center'>
                 <input type='submit' value='Cancel' name='cancel_btn'>&nbsp;
-                <input type='submit' value='Save Draft' name='save_btn'>&nbsp;
-        "
-        # Improve! In current use case WF case should not move on
+            "
+	    # Improve! In current use case WF case should not move on
 	    if { "Next" != $evaluation_process_status } {
+                append html "<input type='submit' value='Save Draft' name='save_btn'>&nbsp;"
                 append html "<input type='submit' value='                    Submit                    ' name='save_and_finish_btn'>&nbsp;"
+	    } else {
+                append html "<input type='submit' value='Save' name='save_btn'>&nbsp;"
 	    }
-	    
-        append html "
-                </td></tr></table></form>"
+	    append html "</td></tr></table></form>"
 	}
     }
     return $html
