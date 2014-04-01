@@ -10,6 +10,7 @@ ad_page_contract {
     @param start_unit Month or week to start within the start_year
 } {
     { user_id 0 }
+    { supervisor_id 0 }
     { cost_center_id 0 }
     { department_id 0 }
 }
@@ -76,21 +77,23 @@ db_foreach r $evaluation_sql {
     set employee_evaluation_arr($key) $employee_evaluation_id
 }
 
-# 
 set sql_distinct_eval_year "select evaluation_year, transition_name_printing from im_employee_evaluation_processes order by evaluation_year"
 set evaluation_year_list [db_list_of_lists get_distinct_year_list $sql_distinct_eval_year] 
 
 # ------------------------------------------------------------
 # Conditional SQL Where-Clause
 #
-# ------------------------------------------------------------
-# Conditional SQL Where-Clause
-#
  
 set criteria [list]
 
+# Employee Filter
 if { 0 != $user_id && "" != $user_id } {
     lappend criteria "e.employee_id = :user_id"
+}
+
+# Supervisor Filter
+if { 0 != $supervisor_id && "" != $supervisor_id } {
+    lappend criteria "e.supervisor_id = :supervisor_id"
 }
 
 # Put everything together
@@ -99,12 +102,24 @@ if { ![empty_string_p $where_clause] } {
     set where_clause " and $where_clause"
 }
 
-
 set sql ""
-# First simple case - current User is SysAdmin or HR Manager - show all 
+
+# ------------------------------------------------------------
+# Create main sql 
+#
+
+# KH: Custom implementation for customer who sponsored development I decided to make this report part of the ee-package instead of a custom package 
+# so that the report doesn't get 'lost in space' 
+if {[catch {
+    set user_is_vp_or_dir_p [db_string get_data "select count(*) from im_employees where l2_vp_id = :current_user_id OR l3_director_id = :current_user_id limit 1" -default 0]
+} err_msg]} {
+    global errorInfo
+    ns_log Error $errorInfo
+    set user_is_vp_or_dir_p 0
+}
 
 # Second case - current user is not in L2/L3, simply show direct reports  
-if { ![db_string get_data "select count(*) from im_employees where l2_vp_id = :current_user_id OR l3_vp_id = :current_user_id limit 1" -default 0] } {
+if { !$user_is_vp_or_dir_p } {
     set sql "
         select
               cc.party_id as employee_id,
@@ -130,6 +145,7 @@ if { ![db_string get_data "select count(*) from im_employees where l2_vp_id = :c
     "
 }
 
+# Current User is SysAdmin or HR Manager - show all 
 if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr_p $current_user_id] } {
     set sql "
     	select 
@@ -233,9 +249,15 @@ set html "
 		</tr>
 -->
 		<tr>
-		  <td class=form-label>Employee</td>
+		  <td class=form-label>[lang::message::lookup "" intranet-core.Supervisor "Supervisor"]</td>
 		  <td class=form-widget>
-		    [im_user_select -include_empty_p 1 user_id $user_id]
+		    [im_supervisor_select -include_empty_p 1 $supervisor_id]
+		  </td>
+		</tr>
+		<tr>
+		  <td class=form-label>[lang::message::lookup "" intranet-core.Employee "Employee"]</td>
+		  <td class=form-widget>
+		    [im_user_select -include_empty_p 1 -include_empty_name "" user_id $user_id]
 		  </td>
 		</tr>
                 <tr>
