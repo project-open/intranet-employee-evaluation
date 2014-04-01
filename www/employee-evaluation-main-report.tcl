@@ -10,7 +10,7 @@ ad_page_contract {
     @param start_unit Month or week to start within the start_year
 } {
     { user_id 0 }
-    { supervisor_id 0 }
+    { user_supervisor_id 0 }
     { cost_center_id 0 }
     { department_id 0 }
 }
@@ -92,8 +92,8 @@ if { 0 != $user_id && "" != $user_id } {
 }
 
 # Supervisor Filter
-if { 0 != $supervisor_id && "" != $supervisor_id } {
-    lappend criteria "e.supervisor_id = :supervisor_id"
+if { 0 != $user_supervisor_id && "" != $user_supervisor_id } {
+    lappend criteria "e.supervisor_id = :user_supervisor_id"
 }
 
 # Put everything together
@@ -251,7 +251,7 @@ set html "
 		<tr>
 		  <td class=form-label>[lang::message::lookup "" intranet-core.Supervisor "Supervisor"]</td>
 		  <td class=form-widget>
-		    [im_supervisor_select -include_empty_p 1 $supervisor_id]
+		    [im_supervisor_select -include_empty_p 1 $user_supervisor_id]
 		  </td>
 		</tr>
 		<tr>
