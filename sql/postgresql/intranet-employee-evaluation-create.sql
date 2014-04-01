@@ -466,3 +466,39 @@ begin
 end;$BODY$ language 'plpgsql';
 select inline_1 ();
 drop function inline_1();
+
+
+create or replace function inline_1 ()
+returns integer as $body$
+declare
+        v_menu                  integer;
+        v_parent_menu         	integer;
+        v_employees             integer;
+begin
+
+        select menu_id into v_parent_menu from im_menus where label = 'reporting-other';
+ 
+        v_menu := im_menu__new (
+                null,                                   -- p_menu_id
+                'im_menu',                            	-- object_type
+                now(),                                  -- creation_date
+                null,                                   -- creation_user
+                null,                                   -- creation_ip
+                null,                                   -- context_id
+                'intranet-employee-evaluation',   	-- package_name
+                'employee-evaluation-main-report', 	-- label
+                'Employee Evaluation Main Report',      -- name
+                '/intranet-employee-evaluation/employee-evaluation-main-report',   -- url
+                -10,                                    -- sort_order
+                v_parent_menu,                          -- parent_menu_id
+                null                                    -- p_visible_tcl
+        );
+
+        select group_id into v_employees from groups where group_name = 'HR Managers'; 
+        PERFORM acs_permission__grant_permission(v_menu, v_employees, 'read');
+
+        return 0;
+end;$body$ language 'plpgsql';
+select inline_1 ();
+drop function inline_1();
+
