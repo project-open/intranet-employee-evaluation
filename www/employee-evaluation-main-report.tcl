@@ -108,8 +108,9 @@ set sql ""
 # Create main sql 
 #
 
-# KH: Custom implementation for customer who sponsored development I decided to make this report part of the ee-package instead of a custom package 
-# so that the report doesn't get 'lost in space' 
+# KH: Custom implementation for customer who sponsored development I decided to make this report 
+# part of the ee-package so that the report doesn't get lost in some custom package  
+
 if {[catch {
     set user_is_vp_or_dir_p [db_string get_data "select count(*) from im_employees where l2_vp_id = :current_user_id OR l3_director_id = :current_user_id limit 1" -default 0]
 } err_msg]} {
@@ -118,8 +119,8 @@ if {[catch {
     set user_is_vp_or_dir_p 0
 }
 
-# Second case - current user is not in L2/L3, simply show direct reports  
 if { !$user_is_vp_or_dir_p } {
+    # current user is not in L2/L3, simply show direct reports
     set sql "
         select
               cc.party_id as employee_id,
@@ -139,6 +140,32 @@ if { !$user_is_vp_or_dir_p } {
               and e.employee_id = cc.party_id
               and e.supervisor_id = :current_user_id
 	      $where_clause
+        order by
+              last_name,
+              first_names
+    "
+} else {
+    # Show all 'Direct Reports' and all users with current user as VP or Director 
+    set sql "
+        select
+              cc.party_id as employee_id,
+              cc.first_names,
+              cc.last_name
+        from
+              cc_users cc,
+              acs_rels r,
+              membership_rels mr,
+              im_employees e
+        where
+              r.object_id_one = :employee_group_id
+              and r.object_id_two = cc.party_id
+              and r.rel_type = 'membership_rel'
+              and r.rel_id = mr.rel_id
+              and mr.member_state = 'approved'
+              and e.employee_id = cc.party_id
+              and e.supervisor_id = :current_user_id
+	      and (e.l2_vp_id = :current_user_id OR e.l3_director_id = = :current_user_id)
+              $where_clause
         order by
               last_name,
               first_names
@@ -172,33 +199,6 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
 }
 
 
-# Temporary fallback for L2/L3 Managers - show direct reports only
-if { "" == $sql } { 
-    set sql "
-        select
-              cc.party_id as employee_id,
-              cc.first_names,
-              cc.last_name
-        from
-              cc_users cc,
-              acs_rels r,
-              membership_rels mr,
-              im_employees e
-        where
-              r.object_id_one = :employee_group_id
-              and r.object_id_two = cc.party_id
-              and r.rel_type = 'membership_rel'
-              and r.rel_id = mr.rel_id
-              and mr.member_state = 'approved'
-              and e.employee_id = cc.party_id
-              and e.supervisor_id = :current_user_id
-              $where_clause
-        order by
-              last_name,
-              first_names
-    "
-}
-
 
 # -----------------------------------------------------------
 # Outer where 
@@ -222,9 +222,7 @@ if { "0" != $department_id &&  "" != $department_id } {
 }
 
 # ------------------------------------------------------------
-# Define the report - SQL, counters, headers and footers 
-#
-
+# Output 
 
 set html "
 		[im_header]
