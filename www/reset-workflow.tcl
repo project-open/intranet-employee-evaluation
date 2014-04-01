@@ -17,6 +17,7 @@ ad_page_contract {
     @author 
 } {
     employee_evaluation_id:integer
+    employee_id:integer
     { return_url "/intranet-employee-evaluation/"}
 }
 
@@ -29,5 +30,7 @@ if { ![im_is_user_site_wide_or_intranet_admin $current_user_id] && ![im_user_is_
     ad_return_complaint 1  [lang::message::lookup "" intranet-employee-evaluation.NoPermissionResetWf "You have no permission to reset the workflow"]
 }
 
-db_dml reset_wf "delete from im_employee_evaluations where employee_evaluation_id = :employee_evaluation_id"
+# Use two vars to avoid undesired deletion of records 
+db_dml reset_wf "delete from im_employee_evaluations where employee_evaluation_id = :employee_evaluation_id and employee_id = :employee_id"
+
 ad_returnredirect $return_url
