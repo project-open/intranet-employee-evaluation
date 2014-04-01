@@ -136,7 +136,7 @@ if { !$user_is_vp_or_dir_p } {
               and r.object_id_two = cc.party_id
               and r.rel_type = 'membership_rel'
               and r.rel_id = mr.rel_id
-              and mr.member_state = 'approved'
+              and cc.member_state = 'approved'
               and e.employee_id = cc.party_id
               and e.supervisor_id = :current_user_id
 	      $where_clause
@@ -161,10 +161,10 @@ if { !$user_is_vp_or_dir_p } {
               and r.object_id_two = cc.party_id
               and r.rel_type = 'membership_rel'
               and r.rel_id = mr.rel_id
-              and mr.member_state = 'approved'
+              and cc.member_state = 'approved'
               and e.employee_id = cc.party_id
               and e.supervisor_id = :current_user_id
-	      and (e.l2_vp_id = :current_user_id OR e.l3_director_id = = :current_user_id)
+	      and (e.l2_vp_id = :current_user_id OR e.l3_director_id = :current_user_id)
               $where_clause
         order by
               last_name,
@@ -189,7 +189,7 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
 	      and r.object_id_two = cc.party_id 
 	      and r.rel_type = 'membership_rel' 
 	      and r.rel_id = mr.rel_id 
-	      and mr.member_state = 'approved'
+	      and cc.member_state = 'approved'
               and e.employee_id = cc.party_id
 	      $where_clause
 	order by 
