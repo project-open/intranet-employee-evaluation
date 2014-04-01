@@ -73,12 +73,12 @@ set evaluation_sql "
 
 db_foreach r $evaluation_sql {
     set key "$employee_id,$evaluation_year"
-    set ev_arr($key) $employee_evaluation_id
+    set employee_evaluation_arr($key) $employee_evaluation_id
 }
 
-
-set sql_distinct_eval_year "select distinct evaluation_year from im_employee_evaluation_processes"
-set ev_year_list [db_list get_distinct_year_list $sql_distinct_eval_year] 
+# 
+set sql_distinct_eval_year "select evaluation_year, transition_name_printing from im_employee_evaluation_processes order by evaluation_year"
+set evaluation_year_list [db_list_of_lists get_distinct_year_list $sql_distinct_eval_year] 
 
 # ------------------------------------------------------------
 # Conditional SQL Where-Clause
@@ -89,7 +89,7 @@ set ev_year_list [db_list get_distinct_year_list $sql_distinct_eval_year]
  
 set criteria [list]
 
-if { 0 != $user_id } {
+if { 0 != $user_id && "" != $user_id } {
     lappend criteria "e.employee_id = :user_id"
 }
 
@@ -103,8 +103,8 @@ if { ![empty_string_p $where_clause] } {
 set sql ""
 # First simple case - current User is SysAdmin or HR Manager - show all 
 
-# Second case - current user is not in L2/L2, simply show direct reports  
-if { [db_string get_data "select count(*) from im_employees where l2_vp_id = :current_user_id OR l3_vp_id = :current_user_id" -default 0] } {
+# Second case - current user is not in L2/L3, simply show direct reports  
+if { ![db_string get_data "select count(*) from im_employees where l2_vp_id = :current_user_id OR l3_vp_id = :current_user_id limit 1" -default 0] } {
     set sql "
         select
               cc.party_id as employee_id,
@@ -156,6 +156,34 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
 }
 
 
+# Temporary fallback for L2/L3 Managers - show direct reports only
+if { "" == $sql } { 
+    set sql "
+        select
+              cc.party_id as employee_id,
+              cc.first_names,
+              cc.last_name
+        from
+              cc_users cc,
+              acs_rels r,
+              membership_rels mr,
+              im_employees e
+        where
+              r.object_id_one = :employee_group_id
+              and r.object_id_two = cc.party_id
+              and r.rel_type = 'membership_rel'
+              and r.rel_id = mr.rel_id
+              and mr.member_state = 'approved'
+              and e.employee_id = cc.party_id
+              and e.supervisor_id = :current_user_id
+              $where_clause
+        order by
+              last_name,
+              first_names
+    "
+}
+
+
 # -----------------------------------------------------------
 # Outer where 
 # -----------------------------------------------------------
@@ -180,6 +208,7 @@ if { "0" != $department_id &&  "" != $department_id } {
 # ------------------------------------------------------------
 # Define the report - SQL, counters, headers and footers 
 #
+
 
 set html "
 		[im_header]
@@ -230,27 +259,27 @@ set html "
 
 # Table Title 
 append html "
-	<table border=0 cellspacing=5 cellpadding=5>\n
-	<tr>
-	<td>[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]</td>
+	<table border=0 class='table_list_simple'>\n
+	<tr class='rowtitle'>
+	<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]</td>
 "
-foreach r $ev_year_list {
-    append html "<td>$r</td>"    
+foreach rec $evaluation_year_list {
+    append html "<td class='rowtitle'>[lindex $rec 0]</td>"    
 }
 append html "</tr>"
 
 # Table body
-db_foreach r $sql {
+db_foreach rec $sql {
     append html "\n
     	<tr>\n
 		<td>$last_name, $first_names</td>
     "
-    foreach r $ev_year_list {
-	set key "$employee_id,$r" 
-	if { [info exists ev_arr($key)] } {
-	    append html "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$ev_arr($key)'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</a>"
+    foreach rec $evaluation_year_list {
+	set key "$employee_id,[lindex $rec 0]" 
+	if { [info exists employee_evaluation_arr($key)] } {
+	    append html "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_arr($key)&transition_name_to_print=[lindex $rec 1]'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</a>"
 	    if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
-		append html "<br><a href='/intranet-employee-evaluation/reset-workflow?employee_evaluation_id=$ev_arr($key)'>[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]</a>"
+		append html "<br><a href='/intranet-employee-evaluation/reset-workflow?employee_evaluation_id=$employee_evaluation_arr($key)'>[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]</a>"
 	    }	    
             append html "</td>\n"
 	} else {

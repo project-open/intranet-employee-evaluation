@@ -29,5 +29,5 @@ if { ![im_is_user_site_wide_or_intranet_admin $current_user_id] && ![im_user_is_
     ad_return_complaint 1  [lang::message::lookup "" intranet-employee-evaluation.NoPermissionResetWf "You have no permission to reset the workflow"]
 }
 
-db_dml reset_wf "delete from im_employee_evaluations where evaluation_id = :employee_evaluation_id"
+db_dml reset_wf "delete from im_employee_evaluations where employee_evaluation_id = :employee_evaluation_id"
 ad_returnredirect $return_url
