@@ -154,6 +154,7 @@ if { !$user_is_vp_or_dir_p } {
 } else {
     # Show all 'Direct Reports' and all users with current user as VP or Director 
     set main_sql "
+	-- 
         select
               cc.party_id as employee_id,
               cc.first_names,
@@ -173,6 +174,57 @@ if { !$user_is_vp_or_dir_p } {
               and e.supervisor_id = :current_user_id
 	      and (e.l2_vp_id = :current_user_id OR e.l3_director_id = :current_user_id)
               $where_clause
+	UNION 
+	        select
+        	      cc.party_id as employee_id,
+	              cc.first_names,
+        	      cc.last_name
+	        from
+        	      cc_users cc,
+	              im_employees e
+		where 
+		      e.l2_vp_id in (
+		        select
+		              cc.party_id as employee_id,
+		              cc.first_names,
+		              cc.last_name
+		        from
+		              cc_users cc,
+		              acs_rels r,
+		              membership_rels mr,
+		              im_employees e
+		        where
+		              r.object_id_one = :employee_group_id
+		              and r.object_id_two = cc.party_id
+		              and r.rel_type = 'membership_rel'
+		              and r.rel_id = mr.rel_id
+		              and cc.member_state = 'approved'
+		              and e.employee_id = cc.party_id
+		              and e.supervisor_id = :current_user_id
+		              and (e.l2_vp_id = :current_user_id OR e.l3_director_id = :current_user_id)
+		              $where_clause
+      			) OR 	      
+		     e.l3_director_id in (
+                        select
+                              cc.party_id as employee_id,
+                              cc.first_names,
+                              cc.last_name
+                        from
+                              cc_users cc,
+                              acs_rels r,
+                              membership_rels mr,
+                              im_employees e
+                        where
+                              r.object_id_one = :employee_group_id
+                              and r.object_id_two = cc.party_id
+                              and r.rel_type = 'membership_rel'
+                              and r.rel_id = mr.rel_id
+                              and cc.member_state = 'approved'
+                              and e.employee_id = cc.party_id
+                              and e.supervisor_id = :current_user_id
+                              and (e.l2_vp_id = :current_user_id OR e.l3_director_id = :current_user_id)
+                              $where_clause
+		     )
         order by
               last_name,
               first_names
