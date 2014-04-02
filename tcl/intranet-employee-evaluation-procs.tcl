@@ -909,7 +909,7 @@ ad_proc -public im_employee_evaluation_employee_component {
     append html_lines "</tr>" 
  
     set html "
-	<h3>$project_name</h3>
+	<h3>$project_name:</h3>
 	<table cellpadding='5' cellspacing='5' border='0'>
 		<tr class='rowtitle'>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Status"]</td>
@@ -919,7 +919,7 @@ ad_proc -public im_employee_evaluation_employee_component {
 		$html_lines
 	</table>
 	<br/>
-	<h3> [lang::message::lookup "" intranet-employee-evaluation.Objectives "Objectives"] $evaluation_year_next_year</h3>
+	<h3> [lang::message::lookup "" intranet-employee-evaluation.Objectives "Objectives"] $evaluation_year_next_year:</h3>
 	<table cellpadding='5' cellspacing='5' border='0'>
 		<tr class='rowtitle'>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Status"]</td>
@@ -967,6 +967,61 @@ ad_proc -public im_employee_evaluation_employee_component {
                 </tr>
 	</table>
     "
+    # Past EE's 
+    set sql_distinct_eval_year "select evaluation_year, transition_name_printing from im_employee_evaluation_processes order by evaluation_year"
+    set evaluation_sql "
+		    select
+		        employee_id,
+			(select
+		                ep.evaluation_year
+		         from
+		                im_employee_evaluation_processes ep,
+		                im_employee_evaluations ee
+		         where
+		                ee.employee_id = e.employee_id
+		                and ee.project_id = ep.project_id
+		                and e.project_id = ep.project_id
+		        ) as evaluation_year,
+		        e.employee_evaluation_id
+		    from
+		        im_employee_evaluations e
+		    where 
+			 employee_id = :current_user_id 
+    "
+
+    db_foreach r $evaluation_sql {
+	set key "$employee_id,$evaluation_year"
+	set employee_evaluation_arr($key) $employee_evaluation_id
+    }
+
+    append html "
+	<h3>[lang::message::lookup "" intranet-employee-evaluation.PastEvaluations "Past Evaluations"]:</h3>
+        <table border=0 class='table_list_simple'>\n
+        <tr class='rowtitle'>
+    "
+
+    set found_past_evaluation_year_p 0
+    set evaluation_year_list [db_list_of_lists get_distinct_year_list $sql_distinct_eval_year]
+    foreach rec $evaluation_year_list {
+        if { $evaluation_year_this_year != [lindex $rec 0] && $evaluation_year_next_year != [lindex $rec 0]  } {
+	    set found_past_evaluation_year_p 1
+	    append html "<td class='rowtitle'>[lindex $rec 0]</td>"
+	}
+    }
+
+    append html "</tr><tr>"
+    foreach rec $evaluation_year_list {
+	if { $evaluation_year_this_year != [lindex $rec 0] && $evaluation_year_next_year != [lindex $rec 0]  } {
+	set key "$current_user_id,[lindex $rec 0]"
+	    if { [info exists employee_evaluation_arr($key)] } {
+		append html "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_arr($key)&transition_name_to_print=[lindex $rec 1]'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</a></td>\n"
+	    } else {
+		append html "<td>-</td>\n"
+	    }
+	}
+    } 
+    if { !$found_past_evaluation_year_p } {append html [lang::message::lookup "" intranet-employee-evaluation.NoPastEvaluationsFound "No past evaluations found"] }
+    append html "</tr></table>"
     return $html
 }
 
