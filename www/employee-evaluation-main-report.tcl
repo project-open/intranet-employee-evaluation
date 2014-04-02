@@ -185,9 +185,7 @@ if { !$user_is_vp_or_dir_p } {
 		where 
 		      e.l2_vp_id in (
 		        select
-		              cc.party_id as employee_id,
-		              cc.first_names,
-		              cc.last_name
+		              cc.party_id
 		        from
 		              cc_users cc,
 		              acs_rels r,
@@ -206,9 +204,7 @@ if { !$user_is_vp_or_dir_p } {
       			) OR 	      
 		     e.l3_director_id in (
                         select
-                              cc.party_id as employee_id,
-                              cc.first_names,
-                              cc.last_name
+                              cc.party_id
                         from
                               cc_users cc,
                               acs_rels r,
