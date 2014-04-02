@@ -245,6 +245,18 @@ append html_table "</tr>"
 
 set ctr 0 
 db_foreach rec $main_sql {
+
+    # Sensitive Data, double check permissions. Not optimized, delete when all is ok.    
+    if { 
+	!([db_string get_perm "select count(*) from im_employees where l2_vp_id = :current_user_id OR l3_director_id = :current_user_id and employee_id = :employee_id" -default 0]) && \
+	!([db_string get_supervisor_id "select count(*) from im_employees where employee_id = :employee_id and supervisor_id = :current_user_id" -default 0] ) && \
+	!($current_user_id == $employee_id) && \
+	![im_is_user_site_wide_or_intranet_admin $current_user_id] 
+    } {
+	continue
+    }
+    # / Sensitive Data ... 
+
     if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
 	set employee_name "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
     } else {
