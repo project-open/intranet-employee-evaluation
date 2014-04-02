@@ -135,7 +135,6 @@ if { !$user_is_vp_or_dir_p } {
               and cc.member_state = 'approved'
               and e.employee_id = cc.party_id
               and e.supervisor_id = :current_user_id
-	      and e.employee_id = :current_user_id
 
 	UNION
 
