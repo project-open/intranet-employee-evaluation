@@ -35,10 +35,6 @@ if {![string equal "t" $read_p]} {
     return
 }
 
-# ------------------------------------------------------------
-# Validate 
-# ------------------------------------------------------------
-
 
 # ------------------------------------------------------------
 # Defaults
@@ -120,8 +116,8 @@ if {[catch {
 }
 
 if { !$user_is_vp_or_dir_p } {
-    # current user is not in L2/L3, simply show direct reports
-    set sql "
+    # current user is not in L2/L3, simply show direct reports and user himself
+    set main_sql "
         select
               cc.party_id as employee_id,
               cc.first_names,
@@ -139,14 +135,26 @@ if { !$user_is_vp_or_dir_p } {
               and cc.member_state = 'approved'
               and e.employee_id = cc.party_id
               and e.supervisor_id = :current_user_id
-	      $where_clause
+	      and e.employee_id = :current_user_id
+
+	UNION
+
+        select
+              party_id as employee_id,
+              first_names,
+              last_name
+        from
+              cc_users
+        where
+              party_id = :current_user_id
+
         order by
               last_name,
               first_names
     "
 } else {
     # Show all 'Direct Reports' and all users with current user as VP or Director 
-    set sql "
+    set main_sql "
         select
               cc.party_id as employee_id,
               cc.first_names,
@@ -174,7 +182,7 @@ if { !$user_is_vp_or_dir_p } {
 
 # Current User is SysAdmin or HR Manager - show all 
 if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr_p $current_user_id] } {
-    set sql "
+    set main_sql "
     	select 
 	      cc.party_id as employee_id,
      	      cc.first_names, 
@@ -224,12 +232,61 @@ if { "0" != $department_id &&  "" != $department_id } {
 # ------------------------------------------------------------
 # Output 
 
+# We start with the main table because filter display depends on user status   
+
+set html_table "
+	<table border=0 class='table_list_simple'>\n
+	<tr class='rowtitle'>
+	<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]</td>
+"
+foreach rec $evaluation_year_list {
+    append html_table "<td class='rowtitle'>[lindex $rec 0]</td>"    
+}
+append html_table "</tr>"
+
+set ctr 0 
+db_foreach rec $main_sql {
+    if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
+	set employee_name "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
+    } else {
+	set employee_name "$last_name, $first_names"
+    }
+
+    append html_table "\n
+    	<tr>\n
+		<td>$employee_name</td>
+    "
+    foreach rec $evaluation_year_list {
+	set key "$employee_id,[lindex $rec 0]" 
+	if { [info exists employee_evaluation_arr($key)] } {
+	    append html_table "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_arr($key)&transition_name_to_print=[lindex $rec 1]'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</a>"
+	    if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
+		append html_table "<br><a href='/intranet-employee-evaluation/reset-workflow?employee_evaluation_id=$employee_evaluation_arr($key)&employee_id=$employee_id'>[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]</a>"
+	    }	    
+            append html_table "</td>\n"
+	} else {
+		append html_table "<td>-</td>\n"
+	}
+    }
+    append html_table "\n		    	
+	</tr>
+    "
+    incr ctr
+}
+
+append html_table "</table>"
+
+
 set html "
 		[im_header]
 		[im_navbar]
 		<table border=0 cellspacing=1 cellpadding=1>
 		<tr>
 		<td>
+"
+if { 1 != $ctr } {
+    # User is not a Supervisor/Director/VP/Admin
+    append html "
 		<form>
 		<table border=0 cellspacing=1 cellpadding=1>
 <!--
@@ -265,50 +322,19 @@ set html "
 		</tr>
 		</table>
 		<br><br>
-	</form>
-	</td>
-	<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
-	<td valign='top' width='600px'>
+		</form>
+"
+}
+append html "
+		</td>
+		<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
+		<td valign='top' width='600px'>
 	    	<!--<ul>
 			<li></li>
 		</ul>-->
-	</td>
-	</tr>
-	</table>
+		</td>
+		</tr>
+		</table>
+		$html_table
+        	\n[im_footer]\n
 " 
-
-# Table Title 
-append html "
-	<table border=0 class='table_list_simple'>\n
-	<tr class='rowtitle'>
-	<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]</td>
-"
-foreach rec $evaluation_year_list {
-    append html "<td class='rowtitle'>[lindex $rec 0]</td>"    
-}
-append html "</tr>"
-
-# Table body
-db_foreach rec $sql {
-    append html "\n
-    	<tr>\n
-		<td>$last_name, $first_names</td>
-    "
-    foreach rec $evaluation_year_list {
-	set key "$employee_id,[lindex $rec 0]" 
-	if { [info exists employee_evaluation_arr($key)] } {
-	    append html "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_arr($key)&transition_name_to_print=[lindex $rec 1]'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</a>"
-	    if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
-		append html "<br><a href='/intranet-employee-evaluation/reset-workflow?employee_evaluation_id=$employee_evaluation_arr($key)&employee_id=$employee_id'>[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]</a>"
-	    }	    
-            append html "</td>\n"
-	} else {
-		append html "<td>-</td>\n"
-	}
-    }
-    append html "\n		    	
-	</tr>
-    "
-}
-
-append html "</table>\n[im_footer]\n"
