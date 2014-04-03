@@ -13,6 +13,7 @@ ad_page_contract {
     { user_supervisor_id 0 }
     { cost_center_id 0 }
     { department_id 0 }
+    { output_format "html" }
 }
 
 # ------------------------------------------------------------
@@ -61,7 +62,11 @@ set evaluation_sql "
 		and ee.project_id = ep.project_id 
 		and e.project_id = ep.project_id
 	) as evaluation_year,  
-	e.employee_evaluation_id
+	e.employee_evaluation_id,
+	(select transition_name 
+	 from 	wf_tasks t, wf_transitions trans 
+	 where  t.case_id = e.case_id and t.transition_key = trans.transition_key and t.state = 'enabled' and trans.workflow_key = e.workflow_key and t.workflow_key = e.workflow_key
+	) as transition_name      
     from 
 	im_employee_evaluations e
     order by 
@@ -71,6 +76,7 @@ set evaluation_sql "
 db_foreach r $evaluation_sql {
     set key "$employee_id,$evaluation_year"
     set employee_evaluation_arr($key) $employee_evaluation_id
+    set wf_transition_name_arr($key) $transition_name
 }
 
 set sql_distinct_eval_year "select evaluation_year, transition_name_printing from im_employee_evaluation_processes order by evaluation_year"
@@ -238,10 +244,17 @@ set html_table "
 	<tr class='rowtitle'>
 	<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]</td>
 "
+
+set csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]\";"
+
+
 foreach rec $evaluation_year_list {
-    append html_table "<td class='rowtitle'>[lindex $rec 0]</td>"    
+    append html_table "<td class='rowtitle' colspan='2'>[lindex $rec 0]</td>"    
+    append csv_output "\"[lindex $rec 0]\";"
 }
+
 append html_table "</tr>"
+set csv_output "[string replace $csv_output end end]\n"
 
 set ctr 0 
 db_foreach rec $main_sql {
@@ -267,21 +280,34 @@ db_foreach rec $main_sql {
     	<tr>\n
 		<td>$employee_name</td>
     "
+    append csv_output "\"$employee_name\";"
+
     foreach rec $evaluation_year_list {
 	set key "$employee_id,[lindex $rec 0]" 
 	if { [info exists employee_evaluation_arr($key)] } {
-	    append html_table "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_arr($key)&transition_name_to_print=[lindex $rec 1]'>[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</a>"
+	    # WF STATUS 
+	    if { [info exists wf_transition_name_arr($key)] } {
+                append html_table "<td>$wf_transition_name_arr($key)</td>"		
+		append csv_output "\"$wf_transition_name_arr($key)\";"
+	    } else {
+                append html_table "<td>[lang::message::lookup "" intranet-employee-evaluation.WfFinished "Finished"]</td>"		
+		append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.WfFinished "Finished"]\";"
+	    }
+	    # PRINT and RESET feature  
+	    append html_table "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_arr($key)&transition_name_to_print=[lindex $rec 1]' target='_blank'>"
+            append html_table "<img src='/intranet/images/navbar_default/printer.png' alt='[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]'/></a>"
 	    if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
-		append html_table "<br><a href='/intranet-employee-evaluation/reset-workflow?employee_evaluation_id=$employee_evaluation_arr($key)&employee_id=$employee_id'>[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]</a>"
+		append html_table "<a href='/intranet-employee-evaluation/reset-workflow?employee_evaluation_id=$employee_evaluation_arr($key)&employee_id=$employee_id' target='_blank'>"
+                append html_table "<img src='/intranet/images/navbar_default/arrow_undo.png' alt='[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]' /></a>"
 	    }	    
             append html_table "</td>\n"
 	} else {
-		append html_table "<td>-</td>\n"
+	    append html_table "<td><span style='color:red'>[lang::message::lookup "" intranet-employee-evaluation.NotStarted "Not Started"]</span></td><td>-</td>\n"
+	    append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.NotStarted "Not Started"]\";"
 	}
     }
-    append html_table "\n		    	
-	</tr>
-    "
+    append html_table "\n</tr>\n"
+    set csv_output "[string replace $csv_output end end]\n" 
     incr ctr
 }
 
@@ -327,6 +353,12 @@ if { 1 != $ctr } {
 		  </td>
 		</tr>
                 <tr>
+                  <td class=form-label>[lang::message::lookup "" intranet-reporting.Format "Format"]</td>
+                  <td class=form-widget>
+                    [im_report_output_format_select output_format "" $output_format]
+                  </td>
+                </tr>
+                <tr>
   		 <tr>
 		  <td class=form-label></td>
 		  <td class=form-widget><input type=submit value=Submit></td>
@@ -349,3 +381,9 @@ append html "
 		$html_table
         	\n[im_footer]\n
 " 
+
+if { "csv" == $output_format } {
+    im_report_write_http_headers -report_name $page_title -output_format $output_format
+    ns_write $csv_output
+    ad_script_abort
+}
