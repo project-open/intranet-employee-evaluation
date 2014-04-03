@@ -1079,22 +1079,31 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
 
     # Statistics 'Places'
     set sql "
-      select 
-	 (select place_name from wf_places where place_key = t.place_key and workflow_key=:workflow_key_this_year) as place_name,
-	 count(*) as count_cases
-      from 
-    	 wf_tokens t
-      where 
-          state = 'free' 
-    	  and t.workflow_key = :workflow_key_this_year
-    	  and t.case_id in (
-	      select distinct case_id from im_employee_evaluations where project_id = :project_id_this_year
-    	  )
-     group by 
-     	   place_name
-     order by 
-	   count_cases
-     "
+        select
+                p.place_name,
+                s.count_cases
+        from
+              (
+              select
+                 (select place_key from wf_places where place_key = t.place_key and workflow_key=:workflow_key_this_year) as place_key,
+                 count(*) as count_cases
+              from
+                 wf_tokens t
+              where
+                  state = 'free'
+                  and t.workflow_key = :workflow_key_this_year
+                  and t.case_id in (
+                      select distinct case_id from im_employee_evaluations where project_id = :project_id_this_year
+                  )
+             group by
+                   place_key
+             ) s,
+             wf_places p
+        where
+             p.place_key = s.place_key
+        order by
+             p.sort_order
+    "
 
     set status_table_lines_html_active ""
     db_foreach r $sql {
