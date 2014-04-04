@@ -1059,8 +1059,10 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
     # Get total number of employees
     set sql "select count(*) from acs_rels where object_id_one = :project_id_this_year and rel_type = 'im_biz_object_member'"
     set total_participants [db_string get_total_participants $sql -default 0]
+    set total_participants_display $total_participants
+    append total_participants e0
 
-    set html_output "<strong>[lang::message::lookup "" intranet-employee-evaluation.TotalParticipants "Total Participants"]:</strong> $total_participants <br/><br/>"
+    set html_output "<strong>[lang::message::lookup "" intranet-employee-evaluation.TotalParticipants "Total Participants"]:</strong> $total_participants_display <br/><br/>"
     append html_output "<strong>[lang::message::lookup "" intranet-employee-evaluation.ActiveWorkflows: "Active Workflows"]:</strong> &nbsp;"
 
     # Get finished cases 
@@ -1110,7 +1112,7 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
 
     db_foreach r $sql {
         if { 0 != $count_cases } {
-            set percentage [expr 100 * $count_cases / $total_participants]
+            set percentage [format "%.2f" [expr {double(round(100*[expr 100 * $count_cases / $total_participants]))/100}]]
         } else {
             set percentage 0
         }
@@ -1140,12 +1142,12 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
                         <tr>
                                 <td><strong>[lang::message::lookup "" intranet-employee-evaluation.Finished "Finished"]</strong></td>
                                 <td align='right'><strong>$count_finished_wfs</strong></td>
-                                <td align='right'><strong>[expr 100 * $count_finished_wfs/$total_participants]%</strong></td>
+                                <td align='right'><strong>[format "%.2f" [expr {double(round(100*[expr 100 * $count_finished_wfs/$total_participants]))/100}]]%</strong></td>
                         </tr>
                         <tr>
                                 <td><strong>[lang::message::lookup "" intranet-employee-evaluation.NotYetStarted "Not yet started"]</strong></td>
                                 <td align='right'><strong>[expr $total_participants - $count_finished_wfs - $total_started_wfs]</strong></td>
-                                <td align='right'><strong>[expr 100 * [expr $total_participants - $count_finished_wfs - $total_started_wfs]/$total_participants]%</strong></td>
+                                <td align='right'><strong>[format "%.2f" [expr {double(round(100*[expr ($total_participants - $count_finished_wfs - $total_started_wfs)*100/$total_participants]))/100}]]%</strong></td>
                         </tr>
                 </table>"
     } else {
