@@ -66,7 +66,7 @@ set evaluation_sql "
 	(select transition_name 
 	 from 	wf_tasks t, wf_transitions trans 
 	 where  t.case_id = e.case_id and t.transition_key = trans.transition_key and t.state = 'enabled' and trans.workflow_key = e.workflow_key and t.workflow_key = e.workflow_key
-	) as transition_name      
+	) as transition_name
     from 
 	im_employee_evaluations e
     order by 
@@ -127,7 +127,9 @@ if { !$user_is_vp_or_dir_p } {
         select
               cc.party_id as employee_id,
               cc.first_names,
-              cc.last_name
+              cc.last_name,
+	      (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
+              (select im_category_from_id(e.new_sub_division_id)) as sub_division
         from
               cc_users cc,
               acs_rels r,
@@ -147,7 +149,9 @@ if { !$user_is_vp_or_dir_p } {
         select
               party_id as employee_id,
               first_names,
-              last_name
+              last_name,
+              (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
+              (select im_category_from_id(e.new_sub_division_id)) as sub_division
         from
               cc_users
         where
@@ -164,7 +168,9 @@ if { !$user_is_vp_or_dir_p } {
         select
               cc.party_id as employee_id,
               cc.first_names,
-              cc.last_name
+              cc.last_name,
+              (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
+              (select im_category_from_id(e.new_sub_division_id)) as sub_division
         from
               cc_users cc,
               acs_rels r,
@@ -191,7 +197,9 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
     	select 
 	      cc.party_id as employee_id,
      	      cc.first_names, 
-	      cc.last_name 
+	      cc.last_name,
+              (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
+              (select im_category_from_id(e.new_sub_division_id)) as sub_division 
 	from 
 	      cc_users cc, 
 	      acs_rels r, 
@@ -210,8 +218,6 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
 	      first_names
     "
 }
-
-
 
 # -----------------------------------------------------------
 # Outer where 
@@ -243,9 +249,13 @@ set html_table "
 	<table border=0 class='table_list_simple'>\n
 	<tr class='rowtitle'>
 	<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]</td>
+	<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.SupervisorName "Supervisor"]</td>
+	<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Sub-Divison "Sub-Division"]</td>
 "
 
 set csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]\";"
+set csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.SupervisorName "Supervisor"]\";"
+set csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.Sub-Divison "Sub-Division"]\";"
 
 
 foreach rec $evaluation_year_list {
@@ -272,6 +282,7 @@ db_foreach rec $main_sql {
 
     if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
 	set employee_name "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
+	set supervisor_name "<a href='/intranet/users/view?user_id=$employee_id'>$supervisor_name</a>"
     } else {
 	set employee_name "$last_name, $first_names"
     }
@@ -279,8 +290,11 @@ db_foreach rec $main_sql {
     append html_table "\n
     	<tr>\n
 		<td>$employee_name</td>
+		<td>$supervisor_name</td>
+		<td>$sub_division</td>
+
     "
-    append csv_output "\"$last_name, $first_names\";"
+    append csv_output "\"$last_name, $first_names\";\"$supervisor_name\";\"$sub_division\";"
 
     foreach rec $evaluation_year_list {
 	set key "$employee_id,[lindex $rec 0]" 
