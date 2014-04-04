@@ -280,7 +280,7 @@ db_foreach rec $main_sql {
     	<tr>\n
 		<td>$employee_name</td>
     "
-    append csv_output "\"$employee_name\";"
+    append csv_output "\"$last_name, $first_names\";"
 
     foreach rec $evaluation_year_list {
 	set key "$employee_id,[lindex $rec 0]" 
