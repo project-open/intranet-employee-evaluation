@@ -301,7 +301,7 @@ db_foreach rec $main_sql {
 	set key "$employee_id,[lindex $rec 0]" 
 	if { [info exists employee_evaluation_arr($key)] } {
 	    # WF STATUS 
-	    if { [info exists wf_transition_name_arr($key)] } {
+            if { [info exists wf_transition_name_arr($key)] &&  "" != $wf_transition_name_arr($key) } {
                 append html_table "<td>$wf_transition_name_arr($key)</td>"		
 		append csv_output "\"$wf_transition_name_arr($key)\";"
 	    } else {
