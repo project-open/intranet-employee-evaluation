@@ -1106,39 +1106,50 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
     "
 
     set status_table_lines_html_active ""
+    set total_started_wfs 0
+
     db_foreach r $sql {
-	if { 0 != $count_cases } {
-	    set percentage [expr 100 * $count_cases / $total_participants]
-	} else {
-	    set percentage 0 
-	}
-	append status_table_lines_html_active "
-		<tr>
-		<td>$place_name</td>
-       		<td align='right'>$count_cases</td>
-		<td align='right'>${percentage}%</td>
-		</tr>
-	"
+        if { 0 != $count_cases } {
+            set percentage [expr 100 * $count_cases / $total_participants]
+        } else {
+            set percentage 0
+        }
+        append status_table_lines_html_active "
+                <tr>
+                <td>$place_name</td>
+                <td align='right'>$count_cases</td>
+                <td align='right'>${percentage}%</td>
+                </tr>
+        "
+        set total_started_wfs [expr $total_started_wfs + $count_cases]
     }
- 
+
     if { "" != $status_table_lines_html_active || 0 != $count_finished_wfs } {
-	append html_output "
-		<br/><br/>
-		<table cellpadding='5' cellspacing='5' border='0'>
-                	<tr class='rowtitle'>
-                	<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.WfPlaceName "Place"]</td>
-                	<td class='rowtitle' align='center'>[lang::message::lookup "" intranet-employee-evaluation.NumberCases "Number<br/>Cases"]</td>
-                	<td class='rowtitle' align='center'>[lang::message::lookup "" intranet-employee-evaluation.Percent "Percent"]</td>
-                	</tr>
-			$status_table_lines_html_active
-	                <tr>
-        	        	<td>[lang::message::lookup "" intranet-employee-evaluation.Finished "Finished"]</td>
-                        	<td align='right'>$count_finished_wfs</td>
-	                	<td align='right'>[expr 100 * $count_finished_wfs/$total_participants]%</td>
-        	        </tr>
-		</table>"
+        append html_output "
+                <br/><br/>
+                <table cellpadding='5' cellspacing='5' border='0'>
+                        <tr class='rowtitle'>
+                        <td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.WfPlaceName "Place"]</td>
+                        <td class='rowtitle' align='center'>[lang::message::lookup "" intranet-employee-evaluation.NumberCases "Number<br/>Cases"]</td>
+                        <td class='rowtitle' align='center'>[lang::message::lookup "" intranet-employee-evaluation.Percent "Percent"]</td>
+                        </tr>
+                        $status_table_lines_html_active
+                        <tr>
+                                <td colspan='3'>&nbsp;</td>
+                        </tr>
+                        <tr>
+                                <td><strong>[lang::message::lookup "" intranet-employee-evaluation.Finished "Finished"]</strong></td>
+                                <td align='right'><strong>$count_finished_wfs</strong></td>
+                                <td align='right'><strong>[expr 100 * $count_finished_wfs/$total_participants]%</strong></td>
+                        </tr>
+                        <tr>
+                                <td><strong>[lang::message::lookup "" intranet-employee-evaluation.NotYetStarted "Not yet started"]</strong></td>
+                                <td align='right'><strong>[expr $total_participants - $count_finished_wfs - $total_started_wfs]</strong></td>
+                                <td align='right'><strong>[expr 100 * [expr $total_participants - $count_finished_wfs - $total_started_wfs]/$total_participants]%</strong></td>
+                        </tr>
+                </table>"
     } else {
-	append html_output [lang::message::lookup "" intranet-employee-evaluation.NoWorkflowsStartedYet "No workflows started yet"]
+        append html_output [lang::message::lookup "" intranet-employee-evaluation.NoWorkflowsStartedYet "No workflows started yet"]
     }
 
     return $html_output
