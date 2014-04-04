@@ -39,6 +39,6 @@ Your entries have been saved. <br><br>
 Please choose how to continue:<br><br> 
 <br><br>
 </strong>
-<button onclick=\"window.location.replace('/acs-workflow/task?task_id=$task_id')\">Back to Objectives</button>
-<button onclick=\"window.location.replace('/intranet/')\">Leave - I understand that I will not be able to return to edit the 2014 objectives anymore</button>
+<button onclick=\"window.location.replace('/acs-workflow/task?task_id=$task_id')\">Back to Objectives</button>&nbsp;&nbsp;OR&nbsp;&nbsp;
+<button onclick=\"window.location.replace('/intranet-employee-evaluation/block-evaluation?task_id=$task_id')\">Leave - I understand that I will not be able to return to edit the objectives anymore</button>
 "
