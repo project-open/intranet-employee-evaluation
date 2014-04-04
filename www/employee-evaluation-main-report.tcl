@@ -254,8 +254,8 @@ set html_table "
 "
 
 set csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]\";"
-set csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.SupervisorName "Supervisor"]\";"
-set csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.Sub-Divison "Sub-Division"]\";"
+append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.SupervisorName "Supervisor"]\";"
+append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.Sub-Divison "Sub-Division"]\";"
 
 
 foreach rec $evaluation_year_list {
@@ -281,17 +281,18 @@ db_foreach rec $main_sql {
     # / Sensitive Data ... 
 
     if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
-	set employee_name "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
-	set supervisor_name "<a href='/intranet/users/view?user_id=$employee_id'>$supervisor_name</a>"
+        set employee_name "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
+        set supervisor_name_html "<a href='/intranet/users/view?user_id=$employee_id'>$supervisor_name</a>"
     } else {
-	set employee_name "$last_name, $first_names"
+        set employee_name "$last_name, $first_names"
+        set supervisor_name_html $supervisor_name
     }
 
     append html_table "\n
-    	<tr>\n
-		<td>$employee_name</td>
-		<td>$supervisor_name</td>
-		<td>$sub_division</td>
+        <tr>\n
+                <td>$employee_name</td>
+                <td>$supervisor_name_html</td>
+                <td>$sub_division</td>
 
     "
     append csv_output "\"$last_name, $first_names\";\"$supervisor_name\";\"$sub_division\";"
