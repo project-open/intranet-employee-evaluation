@@ -162,9 +162,8 @@ if { !$user_is_vp_or_dir_p } {
               first_names
     "
 } else {
-    # Show all 'Direct Reports' and all users with current user as VP or Director 
+    # Show all 'Direct Reports' and all users with current user as VP or Director
     set main_sql "
-	-- 
         select
               cc.party_id as employee_id,
               cc.first_names,
@@ -269,12 +268,13 @@ set csv_output "[string replace $csv_output end end]\n"
 set ctr 0 
 db_foreach rec $main_sql {
 
-    # Sensitive Data, double check permissions. Not optimized, delete when all is ok.    
+    # Sensitive Data, double check permissions.
     if { 
 	!([db_string get_perm "select count(*) from im_employees where l2_vp_id = :current_user_id OR l3_director_id = :current_user_id and employee_id = :employee_id" -default 0]) && \
 	!([db_string get_supervisor_id "select count(*) from im_employees where employee_id = :employee_id and supervisor_id = :current_user_id" -default 0] ) && \
 	!($current_user_id == $employee_id) && \
-	![im_is_user_site_wide_or_intranet_admin $current_user_id] 
+	![im_is_user_site_wide_or_intranet_admin $current_user_id] && \
+	![im_user_is_hr_p $current_user_id]
     } {
 	continue
     }
@@ -305,13 +305,13 @@ db_foreach rec $main_sql {
                 append html_table "<td>$wf_transition_name_arr($key)</td>"		
 		append csv_output "\"$wf_transition_name_arr($key)\";"
 	    } else {
-                append html_table "<td>[lang::message::lookup "" intranet-employee-evaluation.WfFinished "Finished"]</td>"		
+		append html_table "<td><span style='color:green'>[lang::message::lookup "" intranet-employee-evaluation.WfFinished "Finished"]</span></td>"
 		append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.WfFinished "Finished"]\";"
 	    }
 	    # PRINT and RESET feature  
 	    append html_table "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_arr($key)&transition_name_to_print=[lindex $rec 1]' target='_blank'>"
             append html_table "<img src='/intranet/images/navbar_default/printer.png' alt='[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]'/></a>"
-	    if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
+	    if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr_p $current_user_id] } {
 		append html_table "<a href='/intranet-employee-evaluation/reset-workflow?employee_evaluation_id=$employee_evaluation_arr($key)&employee_id=$employee_id' target='_blank'>"
                 append html_table "<img src='/intranet/images/navbar_default/arrow_undo.png' alt='[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]' /></a>"
 	    }	    
@@ -387,9 +387,13 @@ append html "
 		</td>
 		<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 		<td valign='top' width='600px'>
-	    	<!--<ul>
-			<li></li>
-		</ul>-->
+                <p><strong>[lang::message::lookup "" intranet-employee-evaluation.Legend "Legend"]:</strong></p>
+                <ul>
+                       <li><img src='/intranet/images/navbar_default/printer.png' alt='[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]'/>
+                           [lang::message::lookup "" intranet-employee-evaluation.MainReportLegendPrint "Print Employee Evaluation - Opens in new Browser Tab"]</li>
+                       <li><img src='/intranet/images/navbar_default/arrow_undo.png' alt='[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]' />
+                           [lang::message::lookup "" intranet-employee-evaluation.MainReportLegendReset "Reset Workflow for Employee Evaluation"]</li>
+                </ul>
 		</td>
 		</tr>
 		</table>
