@@ -6,14 +6,19 @@
 # http://www.project-open.com/ for licensing details.
 
 ad_page_contract {
-    @param start_year Year to start the report
-    @param start_unit Month or week to start within the start_year
+
+    Shows WF status, allows resetting WF and provides link to EE print feature. 
+
+    Custom implementation for customer who sponsored development. We decided to make this report
+    part of the ee-package. THis way it does not get lost in some intranet-cust-* package. 
+    Only minor adjustments necessary to make that work for generic EE Reports 
 } {
     { user_id 0 }
     { user_supervisor_id 0 }
     { cost_center_id 0 }
     { department_id 0 }
     { output_format "html" }
+    { show_all_directs_p 0 }
 }
 
 # ------------------------------------------------------------
@@ -36,6 +41,13 @@ if {![string equal "t" $read_p]} {
     return
 }
 
+# Temporary security check
+# set allowed_users_tmp "39539 39339 39132 39897 39126 39224 39087 145110 624 40070 39419"
+# if { [lsearch -exact $allowed_users_tmp $current_user_id] == -1} {
+#    ad_return_complaint 1 "<li>
+#    [lang::message::lookup "" intranet-reporting.You_dont_have_permissions "You don't have the necessary permissions to view this page"]"
+#    return
+# }
 
 # ------------------------------------------------------------
 # Defaults
@@ -129,7 +141,9 @@ if { !$user_is_vp_or_dir_p } {
               cc.first_names,
               cc.last_name,
 	      (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
-              (select im_category_from_id(e.new_sub_division_id)) as sub_division
+              (select im_category_from_id(e.new_sub_division_id)) as sub_division,
+              (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
+              (select im_name_from_user_id(e.l3_director_id,2)) as director_name
         from
               cc_users cc,
               acs_rels r,
@@ -147,16 +161,19 @@ if { !$user_is_vp_or_dir_p } {
 	UNION
 
         select
-              party_id as employee_id,
-              first_names,
-              last_name,
+              cc.party_id as employee_id,
+              cc.first_names,
+              cc.last_name,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
-              (select im_category_from_id(e.new_sub_division_id)) as sub_division
+              (select im_category_from_id(e.new_sub_division_id)) as sub_division,
+              (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
+              (select im_name_from_user_id(e.l3_director_id,2)) as director_name
         from
-              cc_users
+              cc_users cc,
+	      im_employees e
         where
-              party_id = :current_user_id
-
+              party_id = :current_user_id and
+	      cc.party_id = e.employee_id
         order by
               last_name,
               first_names
@@ -169,7 +186,9 @@ if { !$user_is_vp_or_dir_p } {
               cc.first_names,
               cc.last_name,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
-              (select im_category_from_id(e.new_sub_division_id)) as sub_division
+              (select im_category_from_id(e.new_sub_division_id)) as sub_division,
+              (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
+              (select im_name_from_user_id(e.l3_director_id,2)) as director_name
         from
               cc_users cc,
               acs_rels r,
@@ -198,8 +217,10 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
      	      cc.first_names, 
 	      cc.last_name,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
-              (select im_category_from_id(e.new_sub_division_id)) as sub_division 
-	from 
+              (select im_category_from_id(e.new_sub_division_id)) as sub_division,
+	      (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
+	      (select im_name_from_user_id(e.l3_director_id,2)) as director_name
+ 	from 
 	      cc_users cc, 
 	      acs_rels r, 
 	      membership_rels mr,
@@ -268,21 +289,28 @@ set csv_output "[string replace $csv_output end end]\n"
 set ctr 0 
 db_foreach rec $main_sql {
 
-    # Sensitive Data, double check permissions.
-    if { 
-	!([db_string get_perm "select count(*) from im_employees where l2_vp_id = :current_user_id OR l3_director_id = :current_user_id and employee_id = :employee_id" -default 0]) && \
-	!([db_string get_supervisor_id "select count(*) from im_employees where employee_id = :employee_id and supervisor_id = :current_user_id" -default 0] ) && \
-	!($current_user_id == $employee_id) && \
-	![im_is_user_site_wide_or_intranet_admin $current_user_id] && \
-	![im_user_is_hr_p $current_user_id]
-    } {
-	continue
+    # Sensitive Data, double check permissions
+    set access_permission_func [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CustomFunctionDetermineAccessPermissionToEmployeesEvaluation" -default ""]
+    if { "" != $access_permission_func } {
+	if { ![eval $access_permission_func $employee_id]  } {
+	    continue
+	}
+    } else {
+	if { 
+	    ![db_string get_perm "select count(*) from im_employees where l2_vp_id = :current_user_id OR l3_director_id = :current_user_id and employee_id = :employee_id" -default 0] && \
+	    ![db_string get_supervisor_id "select count(*) from im_employees where employee_id = :employee_id and supervisor_id = :current_user_id" -default 0] && \
+	    !$current_user_id == $employee_id && \
+	    ![im_is_user_site_wide_or_intranet_admin $current_user_id] && \
+	    ![im_user_is_hr_p $current_user_id]
+	} {
+	    continue
+	}
     }
     # / Sensitive Data ... 
 
     if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
         set employee_name "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
-        set supervisor_name_html "<a href='/intranet/users/view?user_id=$employee_id'>$supervisor_name</a>"
+	set supervisor_name_html "<a href='/intranet/users/view?user_id=$employee_id'>$supervisor_name</a>"
     } else {
         set employee_name "$last_name, $first_names"
         set supervisor_name_html $supervisor_name
@@ -291,7 +319,12 @@ db_foreach rec $main_sql {
     append html_table "\n
         <tr>\n
                 <td>$employee_name</td>
-                <td>$supervisor_name_html</td>
+                <td>$supervisor_name_html
+    "
+    if { $show_all_directs_p } {
+	append html_table "<br><span style='color:#666'>VP: $vice_president_name<br>Dir.: $director_name</span>"
+    }
+    append html_table "</td>
                 <td>$sub_division</td>
 
     "
@@ -301,7 +334,7 @@ db_foreach rec $main_sql {
 	set key "$employee_id,[lindex $rec 0]" 
 	if { [info exists employee_evaluation_arr($key)] } {
 	    # WF STATUS 
-            if { [info exists wf_transition_name_arr($key)] &&  "" != $wf_transition_name_arr($key) } {
+	    if { [info exists wf_transition_name_arr($key)] &&  "" != $wf_transition_name_arr($key) } {
                 append html_table "<td>$wf_transition_name_arr($key)</td>"		
 		append csv_output "\"$wf_transition_name_arr($key)\";"
 	    } else {
@@ -312,7 +345,7 @@ db_foreach rec $main_sql {
 	    append html_table "<td><a href='/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_arr($key)&transition_name_to_print=[lindex $rec 1]' target='_blank'>"
             append html_table "<img src='/intranet/images/navbar_default/printer.png' alt='[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]'/></a>"
 	    if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr_p $current_user_id] } {
-		append html_table "<a href='/intranet-employee-evaluation/reset-workflow?employee_evaluation_id=$employee_evaluation_arr($key)&employee_id=$employee_id' target='_blank'>"
+		append html_table "&nbsp;<a href='/intranet-employee-evaluation/reset-workflow?employee_evaluation_id=$employee_evaluation_arr($key)&employee_id=$employee_id' target='_blank'>"
                 append html_table "<img src='/intranet/images/navbar_default/arrow_undo.png' alt='[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]' /></a>"
 	    }	    
             append html_table "</td>\n"
@@ -380,6 +413,7 @@ if { 1 != $ctr } {
 		</tr>
 		</table>
 		<br><br>
+                <input name='show_all_directs_p' value='$show_all_directs_p' type='hidden'>
 		</form>
 "
 }
@@ -387,13 +421,13 @@ append html "
 		</td>
 		<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 		<td valign='top' width='600px'>
-                <p><strong>[lang::message::lookup "" intranet-employee-evaluation.Legend "Legend"]:</strong></p>
-                <ul>
-                       <li><img src='/intranet/images/navbar_default/printer.png' alt='[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]'/>
-                           [lang::message::lookup "" intranet-employee-evaluation.MainReportLegendPrint "Print Employee Evaluation - Opens in new Browser Tab"]</li>
-                       <li><img src='/intranet/images/navbar_default/arrow_undo.png' alt='[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]' />
-                           [lang::message::lookup "" intranet-employee-evaluation.MainReportLegendReset "Reset Workflow for Employee Evaluation"]</li>
-                </ul>
+		<p><strong>[lang::message::lookup "" intranet-employee-evaluation.Legend "Legend"]:</strong></p>
+	    	<ul>
+			<li><img src='/intranet/images/navbar_default/printer.png' alt='[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]'/>
+			    [lang::message::lookup "" intranet-employee-evaluation.MainReportLegendPrint "Print Employee Evaluation - Opens in new Browser Tab"]</li>
+			<li><img src='/intranet/images/navbar_default/arrow_undo.png' alt='[lang::message::lookup "" intranet-employee-evaluation.ResetWorkflow "Reset WF"]' />
+			    [lang::message::lookup "" intranet-employee-evaluation.MainReportLegendReset "Reset Workflow for Employee Evaluation"]</li>
+		</ul>
 		</td>
 		</tr>
 		</table>
