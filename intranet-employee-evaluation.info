@@ -25,7 +25,7 @@
 
         <callbacks></callbacks>
         <parameters>
-          <!--<parameter datatype="string" min_n_values="1" max_n_values="1" name="CustomValidationFunction" default="" description="Name of function to perform validation on forms."/>-->
+          <parameter datatype="string" min_n_values="1" max_n_values="1" name="CustomFunctionDetermineAccessPermissionToEmployeesEvaluation" default="" description="Name of function to perform a in order to determine if an employee (current user) has access to another employees 'Performance Evaluation'."/>
         </parameters>
     </version>
 </package>
