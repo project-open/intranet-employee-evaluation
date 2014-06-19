@@ -69,7 +69,7 @@ if {[catch {
 set access_permission_func [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CustomFunctionDetermineAccessPermissionToEmployeesEvaluation" -default ""]
 if { "" != $access_permission_func } {
     if { ![eval $access_permission_func $employee_id]  } {
-            continue
+        ad_return_complaint 1 [lang::message::lookup "" intranet-employee-evaluation.NoPermission "You do not have the permission to view or print this evaluation."]
     }
 } else {
     if {
@@ -79,7 +79,7 @@ if { "" != $access_permission_func } {
             ![im_is_user_site_wide_or_intranet_admin $current_user_id] && \
             ![im_user_is_hr_p $current_user_id]
     } {
-            continue
+        ad_return_complaint 1 [lang::message::lookup "" intranet-employee-evaluation.NoPermission "You do not have the permission to view or print this evaluation."]
     }
 }
 
