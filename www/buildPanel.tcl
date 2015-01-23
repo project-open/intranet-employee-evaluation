@@ -54,18 +54,18 @@ if {[info exists task]} {
     set tab_html_li ""
     set tab_html_div ""
 
-    # TODO: Add check to make sure that current_user_id is a Supervisor 
     if { $current_user_id == $related_object_id } {
-	set role "Employee"
+		set role "Employee"
     } else {
-	set role "Supervisor" 
+		# TODO: Add check to make sure that current_user_id is a Supervisor 
+		set role "Supervisor" 
     }
 
     # Sanity check: Make sure that iuser is assigned to this task
     set task_assignee_p [db_string get_task_assignee "select count(*) from wf_task_assignments where task_id = :task_id and party_id = :current_user_id" -default 0]
 
     if { !$task_assignee_p } {
-	ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.NotAssigned "It appears that you are not assigned to this task. Please contact your System Administrator"]
+		ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.NotAssigned "It appears that you are not assigned to this task. Please contact your System Administrator"]
     }
 
     # ---------------------------------------------------------------
@@ -88,7 +88,7 @@ if {[info exists task]} {
 		and g.grouping_type = 'panel'
     "	
     set group_id [db_string get_group_id $sql -default 0] 
-  
+
     append html "<form action='/intranet-employee-evaluation/process-response' enctype='multipart/form-data' method='post' id='myForm'>"
     append html "[export_vars -form { survey_id return_url related_object_id task_id task_name group_id role}]"
     append html "<input type='hidden' name='action_save' id='action_save' />"    
@@ -106,15 +106,17 @@ if {[info exists task]} {
 		g.grouping_type = 'tab'
 		and pgm.wf_task_name = :task_name
 		and g.group_id = pgm.group_id
-                and pgm.survey_id = :survey_id
+		and pgm.survey_id = :survey_id
 	order by 
 		group_id
     "
 
     set ctr 1
+
     db_foreach tab $sql {
-	append tab_html_li "<li><a href=\"#ee-tabs-$ctr\">$group_name</a></li>\n"
-	append tab_html_div "\n<div id=\"ee-tabs-$ctr\">"
+		# Building single tabs 
+		append tab_html_li "<li><a href=\"#ee-tabs-$ctr\"><br><b>$group_name</b>&nbsp;<img src=\"/intranet/images/navbar_default/arrow_right.png\" alt=\"\" /><br><br></a></li>\n"
+		append tab_html_div "\n<div id=\"ee-tabs-$ctr\">"
 	    # Get all questions for this group
 	    set sql_inner "
             select
@@ -128,45 +130,57 @@ if {[info exists task]} {
             order by
                 gqm.sort_key
             "
-	set question_list [db_list get_questions_for_group $sql_inner]
-	ns_log NOTICE "intranet-ee::buildPanel question_list: $question_list, group_name: $group_name, group_id: $group_id"
-
-	foreach question_id $question_list {
-	    ns_log NOTICE "intranet-ee::buildPanel - Writing question id: $question_id, employee_id: $employee_id, task_name:$task_name"
-	    append tab_html_div [im_employee_evaluation_question_display $question_id $employee_id $task_name "" "f"]
-	    ns_log NOTICE "intranet-ee::buildPanel - question_html: \n [im_employee_evaluation_question_display $question_id $employee_id $task_name "" "f"]"  
-	}
+		set question_list [db_list get_questions_for_group $sql_inner]
+		ns_log NOTICE "intranet-ee::buildPanel question_list: $question_list, group_name: $group_name, group_id: $group_id"
+		
+		foreach question_id $question_list {
+			ns_log NOTICE "intranet-ee::buildPanel - Writing question id: $question_id, employee_id: $employee_id, task_name:$task_name"
+			append tab_html_div [im_employee_evaluation_question_display $question_id $employee_id $task_name "" "f"]
+			ns_log NOTICE "intranet-ee::buildPanel - question_html: \n [im_employee_evaluation_question_display $question_id $employee_id $task_name "" "f"]"  
+		}
         append tab_html_div "</div>\n\n"
-	incr ctr
+		incr ctr
     }
 
     if { 1 != $ctr } {
-	set tab_html "<div id=\"tabs_ee\">\n\n<ul>\n$tab_html_li\n</ul>$tab_html_div\n\n</div>\n"
-	append tab_html "
-	<script>
-	\$(function() {
-	    \$( \"\#tabs_ee\" ).tabs();
-	});
-	</script>"
-	append html $tab_html
+        append tab_html_li "<li><a href=\"#ee-tabs-[expr $ctr + 1]\"><br><b>[lang::message::lookup "" intranet-employee-evaluation.SaveAndFinishStage "Save and Finish Stage"]<img src=\"/intranet/images/cleardot.gif\" alt=\"\" /></b><br><br></a></li>\n"
+        append tab_html_div "\n<div id=\"ee-tabs-[expr $ctr + 1]\">\n"
+        append tab_html_div "<br><br><br><br>\n"
+		append tab_html_div "<span style='color:red;font-weight:bold'>By clicking on button \"Save and Finish Stage\" you confirm that you have finished this part.<br>The workflow will move on and you will NOT be able to edit this section anymore.</span>\n"
+		append tab_html_div "<br><br>If you have not finished yet but want to leave, please save the current status by clicking on \"Save Draft\" \n"
+        append tab_html_div "<br><br>\n"
+		append tab_html_div "<input type='submit' value='                    Save and Finish Stage                    ' name='save_and_finish_btn'>&nbsp;<br><br>\n"
+        append tab_html_div "</div>\n\n"
 
+		# TABS found, build rest of TAB logic 
+		set tab_html "<div id=\"tabs_ee\">\n\n<ul>\n$tab_html_li\n</ul>$tab_html_div\n\n</div>\n"
+		append tab_html "
+		<script>
+		\$(function() {
+	    	\$( \"\#tabs_ee\" ).tabs();
+		});
+		</script>"
+		append html $tab_html
+		
         append html "<br/><hr/><br/>
                 <table cellpadding='0' cellspacing='0' border='0' width='100%'><tr><td align='center'>
                 <input type='submit' value='Cancel' name='cancel_btn'>&nbsp;
                 <input type='submit' value='Save Draft' name='save_btn'>&nbsp;
-	"
-
-	# Improve! In current use case WF case should not move on   
-	if { "Next" != $evaluation_process_status } {
-	    append html "<input type='submit' value='                    Save and Finish Stage                    ' name='save_and_finish_btn'>&nbsp;"
-	}
-
+		"
+		
+		# Improve! In current use case WF case should not move on   
+		if { "Next" != $evaluation_process_status } {
+			append html "<!--<input type='submit' value='                    Save and Finish Stage                    ' name='save_and_finish_btn'>&nbsp;-->"
+		}
+		
         append html "
 		</td></tr></table></form><br/><hr>
+		<!--
 		<strong>Legend:</strong><br/><ul>
 			<li style='font-seize: 80%'>Save Draft: Save current status. The Workflow does not progress. You can open the form again to make changes and extensions.</li>
 			<li style='font-seize: 80%'>Save and Finish Stage: The next 'Workflow Task' will be triggered. It's owner will be informed that you have finished your part.</li>
 		</ul>
+		-->
 		<script type='text/javascript'>
 		    \$(document).ready(function () {
 		       \$(':submit').click(function () { \$('#action_save').val(this.name); });
@@ -182,8 +196,8 @@ if {[info exists task]} {
        		</script>
 	"
     } else {
-	# Get all questions for this group 
-	set sql "
+		# Get all questions for this group 
+		set sql "
 	    select 
     		gqm.question_id,
 		g.grouping_type 
@@ -197,33 +211,33 @@ if {[info exists task]} {
 		gqm.sort_key
          "
 
-	# ad_return_complaint xx [db_list get_group_questions $sql]
+		# ad_return_complaint xx [db_list get_group_questions $sql]
+		
+		# Create HTML for each question 
+		foreach question_id [db_list get_group_questions $sql] {
+			# ad_return_complaint xx "question_id: '$question_id', employee_id: '$employee_id', task_name: '$task_name'"
+			append html [im_employee_evaluation_question_display $question_id $employee_id $task_name "" "f"]
+		}
 
-	# Create HTML for each question 
-	foreach question_id [db_list get_group_questions $sql] {
-	    # ad_return_complaint xx "question_id: '$question_id', employee_id: '$employee_id', task_name: '$task_name'"
-	    append html [im_employee_evaluation_question_display $question_id $employee_id $task_name "" "f"]
-	}
-
-	if { "finished" != $task_status } {
-	    append html "<br/><hr/><br/>
+        if { "finished" != $task_status } {
+            append html "<br/><hr/><br/>
                 <table cellpadding='0' cellspacing='0' border='0' width='100%'><tr><td align='center'>
                 <input type='submit' value='Cancel' name='cancel_btn'>&nbsp;
             "
-	    # Improve! In current use case WF case should not move on
-	    if { "Next" != $evaluation_process_status } {
+            # Improve! In current use case WF case should not move on
+            if { "Next" != $evaluation_process_status } {
                 append html "<input type='submit' value='Save Draft' name='save_btn'>&nbsp;"
                 append html "<input type='submit' value='                    Submit                    ' name='save_and_finish_btn'>&nbsp;"
-	    } else {
+            } else {
                 append html "<input type='submit' value='Save' name='save_btn'>&nbsp;"
-	    }
-	    append html "</td></tr></table></form>"
-	}
+            }
+            append html "</td></tr></table></form>"
+        }
     }
     return $html
-
+	
 } else {
-
+	
     # Stand-Alone Head:
     # This code is called when the page is used as a normal "EditPage" or "NewPage".
     ad_page_contract {
@@ -233,7 +247,7 @@ if {[info exists task]} {
 	@author klaus.hofeditz@project-open.com
 
     } {
-	group_id:multiple,integer 
+		group_id:multiple,integer 
     }
     # ---------------------------------------------------------------
     # Not implemented yet .... 
