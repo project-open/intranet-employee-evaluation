@@ -201,16 +201,17 @@ append html_output "
         </tr>
 	<tr><td colspan='2'><br><br></td></tr>
         <tr>
-                <td valign='top'>
-                        <strong>Overall performance:</strong> $overall_performance<br>
+                <td colspan='2' valign='top'>
+                        <strong>Overall performance:</strong> $overall_performance<br><br><br><br>
                 </td>
+                <!--
                 <td valign='top'>
-			<strong>Performance Plan Signatures--Supervisor/Manager N+1</strong><br><br>
+                        <strong>Performance Plan Signatures--Supervisor/Manager N+1</strong><br><br>
                         <strong>Signature:</strong> _________________________________<br><br>
                         <strong>Date:</strong> _________________________________<br>
                 </td>
+                -->
         </tr>
-
 </table>
 
 
