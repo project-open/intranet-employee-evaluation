@@ -9,7 +9,7 @@
     <inherit-templates-p>t</inherit-templates-p>
     <auto-mount>intranet-employee-evaluation</auto-mount>
 
-    <version name="4.1.0.0.0" url="http://www.project-open.org/download/apm/intranet-employee-evaluation-4.1.0.0.0.apm">
+    <version name="4.1.0.0.2" url="http://www.project-open.org/download/apm/intranet-employee-evaluation-4.1.0.0.2.apm">
         <owner url="mailto:info@project-open.com">Project Open Business Solutions S.L.</owner>
         <summary>Allows to conduct Employee Performance Evaluations</summary>
         <vendor url="www.project-open.org">Project Open Business Solutions S.L.</vendor>
@@ -19,9 +19,9 @@
 
         <provides url="intranet-employee-evaluation" version="0.5d"/>
 
-	<requires url="intranet-workflow" version="4.0.5.0.0"/>
+	<requires url="intranet-workflow" version="4.0.3.1.0"/>
 	<requires url="simple-survey" version="0.4"/>
-	<requires url="intranet-simple-survey" version="4.0.5.0.0"/>
+	<requires url="intranet-simple-survey" version="4.0.3.1.0"/>
 
         <callbacks></callbacks>
         <parameters>
