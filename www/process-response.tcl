@@ -36,56 +36,56 @@ ad_page_contract {
     survey_id:integer,notnull
     related_object_id 
     { return_url:optional }
-    { response_to_question:array,optional,multiple,html }
-    { related_object_id:integer "" }
+    { response_to_question:array,optional,multiple,allhtml }
     { related_context_id:integer "" }
     { task_id "" }
     { task_name "" }
     { role "" }
     { group_id "" }
     { save_btn ""}
+	{ save_btn_private "" }
     { save_and_finish_btn "" }
     { cancel_btn "" }
 
 } -validate {
 
     custom_validation {
-	set sql "
-		select 
-			eep.validation_function 
-		from 
-			im_employee_evaluation_processes eep,
-			im_employee_evaluations ee
-		where 
-			ee.survey_id = :survey_id 
-			and ee.project_id = eep.project_id
-                        and ee.employee_id = :related_object_id
-	"
-	set custom_validation_function [db_string get_data $sql -default ""]
+	    set sql "
+			select 
+				eep.validation_function 
+			from 
+				im_employee_evaluation_processes eep,
+				im_employee_evaluations ee
+			where 
+				ee.survey_id = :survey_id 
+				and ee.project_id = eep.project_id
+            	and ee.employee_id = :related_object_id
+		"
+		set custom_validation_function [db_string get_data $sql -default ""]
 
-	if { "" != $custom_validation_function } {
+		if { "" != $custom_validation_function } {
             set val_result [$custom_validation_function \
                                                 $survey_id \
                                                	$related_object_id \
-						[array get response_to_question] \
+												[array get response_to_question] \
                                                 $related_object_id \
                                                 $related_context_id \
                                                 $task_id \
                                                 $task_name \
                                                 $role \
-						$group_id ]
+												$group_id ]
 
-	    if { "" != $val_result } {
-		ad_complain $val_result
-	    }
-	}
+	    	if { "" != $val_result } {
+				ad_complain $val_result
+	    	}
+		}
     }
 
     cancel { 
-	if { "" != $cancel_btn } {
-	    ns_log NOTICE "intranet-employee-evaluation::process-response - Cancelation"
-	    ad_returnredirect /intranet/
-	}
+		if { "" != $cancel_btn } {
+			ns_log NOTICE "intranet-employee-evaluation::process-response - Cancelation"
+			ad_returnredirect /intranet/
+		}
     }
 
     survey_exists -requires { survey_id } {
@@ -470,7 +470,23 @@ db_transaction {
 # Workflow Action
 # -----------------------------------------------------"
 
-# ad_return_complaint xx "[info exists save_and_finish_btn]"
+
+# ad_return_complaint xx "survey_id: $survey_id, related_object_id $related_object_id"
+
+set sql "
+        select
+            ee.employee_evaluation_id
+        from
+            im_employee_evaluation_processes eep,
+            im_employee_evaluations ee
+        where
+            ee.survey_id = :survey_id
+            and ee.project_id = eep.project_id
+            and ee.employee_id = :related_object_id
+"
+set employee_evaluation_id [db_string get_data $sql -default ""]
+
+set blocked_for_supervisor_sql "update im_employee_evaluations set temporarily_blocked_for_supervisor_p = :temporarily_blocked_for_supervisor_p where employee_evaluation_id = :employee_evaluation_id"
 
 # Close the workflow task if task_id is available
 if { "" != $task_id && "" != $save_and_finish_btn } {
@@ -484,15 +500,19 @@ if { "" != $task_id && "" != $save_and_finish_btn } {
 			-assignments {} \
 			$task_id \
 			$the_action \
-		       ]
+	]
 
     set next_task_id [db_string get_next_task_id "select task_id from wf_tasks where case_id in (select case_id from wf_tasks where task_id=:task_id) and state='enabled'" -default 0]
     set task_assignee_p [db_string get_task_assignee "select count(*) from wf_task_assignments where task_id = :next_task_id and party_id = :user_id" -default 0] 
 
+	# Remove block flag
+	set temporarily_blocked_for_supervisor_p FALSE
+	db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
+
     if { $task_assignee_p } {
-	ad_returnredirect "/acs-workflow/task?task_id=$next_task_id"
+		ad_returnredirect "/acs-workflow/task?task_id=$next_task_id"
     } else {
-	 ad_returnredirect "/intranet-employee-evaluation/next-step?next_task_id=$next_task_id"
+		ad_returnredirect "/intranet-employee-evaluation/next-step?next_task_id=$next_task_id"
     }
 } else {
     # Save button
@@ -510,12 +530,14 @@ if { "" != $task_id && "" != $save_and_finish_btn } {
     "
     set status [db_string get_status $sql -default ""]
     if { "Next" == $status } {
-	ad_returnredirect "/intranet-employee-evaluation/handle-next-year-save-action?task_id=$task_id"	
+		ad_returnredirect "/intranet-employee-evaluation/handle-next-year-save-action?task_id=$task_id"	
     } else {
-	ad_returnredirect "/acs-workflow/task?task_id=$task_id"
+		
+		if { "" != $save_btn_private } {
+			# Set "private" flag
+			set temporarily_blocked_for_supervisor_p TRUE
+			db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
+		}
+		ad_returnredirect "/acs-workflow/task?task_id=$task_id"
     }
 }
-
-
-
-
