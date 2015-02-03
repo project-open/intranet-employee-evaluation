@@ -38,6 +38,7 @@ if {[info exists task]} {
 	select 
 		e.survey_id, 
 		e.employee_id, 
+		(select im_name_from_user_id(e.employee_id, 3)) as employee_name,
 		ep.status as evaluation_process_status
 	from 
 		im_employee_evaluations e,
@@ -49,7 +50,7 @@ if {[info exists task]} {
 
     set return_url [im_url_with_query]
     set related_object_id $employee_id
-    set html ""
+    set html "<h1>[lang::message::lookup "" intranet-core.Employee "Employee"]: $employee_name </h1><br>"
 
     set tab_html_li ""
     set tab_html_div ""
@@ -165,8 +166,16 @@ if {[info exists task]} {
         append html "<br/><hr/><br/>
                 <table cellpadding='0' cellspacing='0' border='0' width='100%'><tr><td align='center'>
                 <input type='submit' value='Cancel' name='cancel_btn'>&nbsp;
-                <input type='submit' value='Save Draft' name='save_btn'>&nbsp;
 		"
+		if { "Employee" == $role } {
+			append html "
+                <input type='submit' value='Save Draft (keep private)' name='save_btn_private'>&nbsp;
+			"
+		}
+
+        append html "
+                <input type='submit' value='Save Draft' name='save_btn'>&nbsp;
+ 		"
 		
 		# Improve! In current use case WF case should not move on   
 		if { "Next" != $evaluation_process_status } {
@@ -211,8 +220,6 @@ if {[info exists task]} {
 		gqm.sort_key
          "
 
-		# ad_return_complaint xx [db_list get_group_questions $sql]
-		
 		# Create HTML for each question 
 		foreach question_id [db_list get_group_questions $sql] {
 			# ad_return_complaint xx "question_id: '$question_id', employee_id: '$employee_id', task_name: '$task_name'"
@@ -227,6 +234,9 @@ if {[info exists task]} {
             # Improve! In current use case WF case should not move on
             if { "Next" != $evaluation_process_status } {
                 append html "<input type='submit' value='Save Draft' name='save_btn'>&nbsp;"
+				if { "Employee" == $role } {
+	                append html "<input type='submit' value='Save Draft (private)' name='save_btn_private'>&nbsp;"
+				}
                 append html "<input type='submit' value='                    Submit                    ' name='save_and_finish_btn'>&nbsp;"
             } else {
                 append html "<input type='submit' value='Save' name='save_btn'>&nbsp;"
