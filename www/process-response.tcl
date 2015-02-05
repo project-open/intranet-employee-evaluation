@@ -506,15 +506,21 @@ if { "" != $task_id && "" != $save_and_finish_btn } {
     set next_task_id [db_string get_next_task_id "select task_id from wf_tasks where case_id in (select case_id from wf_tasks where task_id=:task_id) and state='enabled'" -default 0]
     set task_assignee_p [db_string get_task_assignee "select count(*) from wf_task_assignments where task_id = :next_task_id and party_id = :user_id" -default 0] 
 
-	# Remove block flag
+    # Remove block flag
+    if { "Employee" == $wf_role } {
 	set temporarily_blocked_for_supervisor_p FALSE
 	db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
-
-    if { $task_assignee_p } {
-		ad_returnredirect "/acs-workflow/task?task_id=$next_task_id"
     } else {
-		ad_returnredirect "/intranet-employee-evaluation/next-step?next_task_id=$next_task_id"
+	set temporarily_blocked_for_employee_p FALSE
+	db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql			
     }
+    
+    if { $task_assignee_p } {
+	ad_returnredirect "/acs-workflow/task?task_id=$next_task_id"
+    } else {
+	ad_returnredirect "/intranet-employee-evaluation/next-step?next_task_id=$next_task_id"
+    }
+
 } else {
     # Save button
     # Handle special case that Objectives for next year have been entered
@@ -530,29 +536,29 @@ if { "" != $task_id && "" != $save_and_finish_btn } {
 		and ee.employee_id = :related_object_id 		
     "
     set status [db_string get_status $sql -default ""]
+
     if { "Next" == $status } {
-		ad_returnredirect "/intranet-employee-evaluation/handle-next-year-save-action?task_id=$task_id"	
+	ad_returnredirect "/intranet-employee-evaluation/handle-next-year-save-action?task_id=$task_id"	
     } else {
-		
-		if { "" != $save_btn_private } {
-			# Set "private" flag
-			if { "Employee" == $wf_role } {
-				set temporarily_blocked_for_supervisor_p TRUE
-				db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
-			} else {
-				set temporarily_blocked_for_employee_p TRUE
-				db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql
-			}
-		} else {
-			# Remove block flag
+	if { "" != $save_btn_private } {
+	    # Set "private" flag
+	    if { "Employee" == $wf_role } {
+		set temporarily_blocked_for_supervisor_p TRUE
+		db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
+	    } else {
+		set temporarily_blocked_for_employee_p TRUE
+		db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql
+	    }
+	} else {
+	    # Remove block flag
             if { "Employee" == $wf_role } {
-				set temporarily_blocked_for_supervisor_p FALSE
-				db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
-			} else {
+		set temporarily_blocked_for_supervisor_p FALSE
+		db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
+	    } else {
                 set temporarily_blocked_for_employee_p FALSE
                 db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql			
-			}
-		}
-		ad_returnredirect "/acs-workflow/task?task_id=$task_id"
+	    }
+	}
+	ad_returnredirect "/acs-workflow/task?task_id=$task_id"
     }
 }
