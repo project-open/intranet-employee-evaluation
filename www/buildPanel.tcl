@@ -39,7 +39,9 @@ if {[info exists task]} {
 		e.survey_id, 
 		e.employee_id, 
 		(select im_name_from_user_id(e.employee_id, 3)) as employee_name,
-		ep.status as evaluation_process_status
+		ep.status as evaluation_process_status,
+		e.temporarily_blocked_for_supervisor_p,
+		e.temporarily_blocked_for_employee_p
 	from 
 		im_employee_evaluations e,
 		im_employee_evaluation_processes ep
@@ -50,10 +52,6 @@ if {[info exists task]} {
 
     set return_url [im_url_with_query]
     set related_object_id $employee_id
-    set html "<h1>[lang::message::lookup "" intranet-core.Employee "Employee"]: $employee_name </h1><br>"
-
-    set tab_html_li ""
-    set tab_html_div ""
 
     if { $current_user_id == $related_object_id } {
 		set role "Employee"
@@ -74,6 +72,17 @@ if {[info exists task]} {
     # ---------------------------------------------------------------
 
     # ad_return_complaint xx "select group_id from im_employee_evaluation_panel_group_map where wf_task_name = '$task_name' and survey_id=$survey_id"
+    set tab_html_li ""
+    set tab_html_div ""
+
+	# We do not need to check for "role"
+	if { t == $temporarily_blocked_for_supervisor_p || t == $temporarily_blocked_for_employee_p } {
+		set lock_html "<img src='/intranet/images/navbar_default/lock.png' alt='Private'>"
+	} else {
+		set lock_html "<img src='/intranet/images/navbar_default/lock_break.png' alt='Shared'>"
+	}
+
+    set html "<h2>$lock_html &nbsp; [lang::message::lookup "" intranet-core.Employee "Employee"]: $employee_name </h2><br>"
 
     # Getting group_id for this PANEL
     set sql "
@@ -166,14 +175,7 @@ if {[info exists task]} {
         append html "<br/><hr/><br/>
                 <table cellpadding='0' cellspacing='0' border='0' width='100%'><tr><td align='center'>
                 <input type='submit' value='Cancel' name='cancel_btn'>&nbsp;
-		"
-		if { "Employee" == $role } {
-			append html "
                 <input type='submit' value='Save Draft (keep private)' name='save_btn_private'>&nbsp;
-			"
-		}
-
-        append html "
                 <input type='submit' value='Save Draft' name='save_btn'>&nbsp;
  		"
 		
@@ -233,11 +235,10 @@ if {[info exists task]} {
             "
             # Improve! In current use case WF case should not move on
             if { "Next" != $evaluation_process_status } {
-                append html "<input type='submit' value='Save Draft' name='save_btn'>&nbsp;"
-				if { "Employee" == $role } {
-	                append html "<input type='submit' value='Save Draft (private)' name='save_btn_private'>&nbsp;"
-				}
-                append html "<input type='submit' value='                    Submit                    ' name='save_and_finish_btn'>&nbsp;"
+                append html "<input type='submit' value='Save Draft' name='save_btn'>&nbsp;
+	            			<input type='submit' value='Save Draft (private)' name='save_btn_private'>&nbsp;
+                			<input type='submit' value='                    Submit                    ' name='save_and_finish_btn'>&nbsp;
+				"
             } else {
                 append html "<input type='submit' value='Save' name='save_btn'>&nbsp;"
             }

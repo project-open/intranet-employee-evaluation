@@ -47,7 +47,9 @@ if {[catch {
 		(select im_name_from_user_id(ee.employee_id, $name_order)) as employee_name,
 		(select im_name_from_user_id(ee.supervisor_id, $name_order)) supervisor_name,
 		(select im_category_from_id(e.location_id)) as employee_location,
-		(select im_category_from_id(e.role_function_id)) as employee_position
+		(select im_category_from_id(e.role_function_id)) as employee_position,
+		ee.temporarily_blocked_for_employee_p,
+		ee.temporarily_blocked_for_supervisor_p
 	from 
 		im_employee_evaluations ee,
 		im_projects p,
@@ -65,7 +67,16 @@ if {[catch {
     ad_return_complaint 1 "[lang::message::lookup "" intranet-employee-evaluation.ProblemDBAccess "There was a problem accessing the database:"] $errorInfo"
 }
 
+# --------------------------------------
 # Permissions
+# --------------------------------------
+
+# Check if PE is currently blocked 
+
+if { ($current_user_id == $employee_id && t == $temporarily_blocked_for_employee_p)  || ($current_user_id != $employee_id && t == $temporarily_blocked_for_supervisor_p)} {
+	ad_return_complaint 1 "<strong>[lang::message::lookup "" intranet-employee-evaluation.NoPermissionTemp "You do not have the permission to view or print this evaluation at this moment since access has been blocked by another person."]</strong>"
+}
+
 set access_permission_func [parameter::get -package_id [apm_package_id_from_key intranet-employee-evaluation] -parameter "CustomFunctionDetermineAccessPermissionToEmployeesEvaluation" -default ""]
 if { "" != $access_permission_func } {
     if { ![eval $access_permission_func $employee_id]  } {

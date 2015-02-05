@@ -487,6 +487,7 @@ set sql "
 set employee_evaluation_id [db_string get_data $sql -default ""]
 
 set blocked_for_supervisor_sql "update im_employee_evaluations set temporarily_blocked_for_supervisor_p = :temporarily_blocked_for_supervisor_p where employee_evaluation_id = :employee_evaluation_id"
+set blocked_for_employee_sql "update im_employee_evaluations set temporarily_blocked_for_employee_p = :temporarily_blocked_for_employee_p where employee_evaluation_id = :employee_evaluation_id"
 
 # Close the workflow task if task_id is available
 if { "" != $task_id && "" != $save_and_finish_btn } {
@@ -535,8 +536,22 @@ if { "" != $task_id && "" != $save_and_finish_btn } {
 		
 		if { "" != $save_btn_private } {
 			# Set "private" flag
-			set temporarily_blocked_for_supervisor_p TRUE
-			db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
+			if { "Employee" == $wf_role } {
+				set temporarily_blocked_for_supervisor_p TRUE
+				db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
+			} else {
+				set temporarily_blocked_for_employee_p TRUE
+				db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql
+			}
+		} else {
+			# Remove block flag
+            if { "Employee" == $wf_role } {
+				set temporarily_blocked_for_supervisor_p FALSE
+				db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
+			} else {
+                set temporarily_blocked_for_employee_p FALSE
+                db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql			
+			}
 		}
 		ad_returnredirect "/acs-workflow/task?task_id=$task_id"
     }

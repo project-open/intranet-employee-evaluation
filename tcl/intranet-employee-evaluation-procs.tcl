@@ -41,18 +41,18 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
     db_foreach r "select * from im_employee_evaluation_processes where status in ('Current','Next')" {
 	switch $status {
 	    Current {
-		set evaluation_name_this_year $name
-		set survey_name_this_year $survey_name
-		set project_id_this_year $project_id
-		set transition_name_printing_this_year $transition_name_printing
-		set evaluation_year_this_year $evaluation_year
+			set evaluation_name_this_year $name
+			set survey_name_this_year $survey_name
+			set project_id_this_year $project_id
+			set transition_name_printing_this_year $transition_name_printing
+			set evaluation_year_this_year $evaluation_year
 	    }
 	    Next {
-		set evaluation_name_next_year $name
-		set survey_name_next_year $survey_name
-		set project_id_next_year $project_id		
-		set transition_name_printing_next_year $transition_name_printing
-                set evaluation_year_next_year $evaluation_year
+			set evaluation_name_next_year $name
+			set survey_name_next_year $survey_name
+			set project_id_next_year $project_id		
+			set transition_name_printing_next_year $transition_name_printing
+			set evaluation_year_next_year $evaluation_year
 	    }
 	}
     }
@@ -123,7 +123,7 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
 		   set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id_this_year&transition_name_to_print=$transition_name_printing_this_year"
 
 		   if { t == $temporarily_blocked_for_supervisor_this_year } {
-			   append html_lines "<td><button disabled style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
+			   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.AccessBlockedByEmployee "Access temporarily blocked by Employee"]</td>"
 		   } else {
 			   append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
 		   }
@@ -145,7 +145,7 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
        set upload_form "
 		<form enctype='multipart/form-data' method='POST' action=/intranet-filestorage/upload-2.tcl>
 				[export_form_vars bread_crum_path folder_type object_id return_url]
-				<input type='file' name='upload_file' size='10'><input type=submit value=\"[lang::message::lookup "" intranet-employee-evaluation.Upload "Upload"]\">
+				<input type='file' name='upload_file' size='10'> &nbsp; <input type=submit value=\"[lang::message::lookup "" intranet-employee-evaluation.Upload "Upload"]\">
 		</form>
        "
 
@@ -214,7 +214,7 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
            set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id_next_year&transition_name_to_print=$transition_name_printing_next_year"
 		   
 		   if { t == $temporarily_blocked_for_supervisor_next_year } {
-			   append html_lines "<td><button disabled style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
+			   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.AccessBlockedByEmployee "Access temporarily blocked by Employee"]</td>"
 		   } else {
 			   append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
 		   }
@@ -854,13 +854,13 @@ ad_proc -public im_employee_evaluation_employee_component {
     }
 
     if { ![info exists workflow_key_this_year] || ![info exists workflow_key_next_year] } { 
-	set msg "Can not show PORTLET. No data for Employee Evaluation Processes found. Table 'im_employee_evaluation_processes' needs to have at least one record with status 'Current' and one with status 'next'. Please contact your System Administrator."
-	return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound $msg]
+		set msg "Can not show PORTLET. No data for Employee Evaluation Processes found. Table 'im_employee_evaluation_processes' needs to have at least one record with status 'Current' and one with status 'next'. Please contact your System Administrator."
+		return [lang::message::lookup "" intranet-employee-evaluation.ParameterWorkflowKeyNotFound $msg]
     }
 
     # Additional Sanity checks: Check if transition exists: 
     if { ![db_string sanity_check_wf_transition "select count(*) from wf_transitions where workflow_key = :workflow_key_this_year and transition_name = :transition_name_printing_this_year" -default ""] } {
-	return [lang::message::lookup "" intranet-employee-evaluation.WorkflowMissesTransition. "Can not show PORTLET. No transition: '$transition_name_printing_this_year' in workflow: '$workflow_key_this_year' found. Please contact your System Administrator."]
+		return [lang::message::lookup "" intranet-employee-evaluation.WorkflowMissesTransition. "Can not show PORTLET. No transition: '$transition_name_printing_this_year' in workflow: '$workflow_key_this_year' found. Please contact your System Administrator."]
     }
     
     set html_lines ""
@@ -869,7 +869,8 @@ ad_proc -public im_employee_evaluation_employee_component {
     set sql "
                 select
                         employee_evaluation_id,
-                        case_id
+                        case_id,
+						temporarily_blocked_for_employee_p
                 from
                         im_employee_evaluations
                 where
@@ -878,10 +879,10 @@ ad_proc -public im_employee_evaluation_employee_component {
     "
 
     if {[catch {
-	db_1row get_employee_evaluation_id $sql
+		db_1row get_employee_evaluation_id $sql
     } err_msg]} {
-	set employee_evaluation_id 0
-	set case_id 0
+		set employee_evaluation_id 0
+		set case_id 0
     }
 
     if {[catch {
@@ -898,20 +899,26 @@ ad_proc -public im_employee_evaluation_employee_component {
     if { 0 != $current_task_id } {
         set wf_button "<button style='margin-top: -10px' onclick=\"location.href='/acs-workflow/task?task_id=$current_task_id'\">Next step</button>"
     } else {
-	set wf_button [lang::message::lookup "" intranet-employee-evaluation.NoAssignment "You are currently not assigned to a Workflow Task"]
+		set wf_button [lang::message::lookup "" intranet-employee-evaluation.NoAssignment "You are currently not assigned to a Workflow Task"]
     }
 
     # Print Button 
     if { 0 != $employee_evaluation_id } {
-	set print_button "
+
+		# Check if employee is able to access performance evaluation 
+		if { t == $temporarily_blocked_for_employee_p } { 
+			set print_button [lang::message::lookup "" intranet-employee-evaluation.AccessBlockedBySupervisor "Access temporarily blocked by Supervisor"]
+		} else {
+			set print_button "
                 <form action='/intranet-employee-evaluation/print-employee-evaluation' method='POST' target='_blank'>
                 <input type='hidden' name= 'transition_name_to_print' value='$transition_name_printing_this_year'>
                 <input type='hidden' name= 'employee_evaluation_id' value='$employee_evaluation_id'>
                 <input type='submit' value='[lang::message::lookup "" intranet-employee-evaluation.Print Print]'>
                 </form>
-        "
+			"
+		}
     } else {
-	set print_button "[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]"
+		set print_button "[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]"
     }
 
     append html_lines "<tr>" 

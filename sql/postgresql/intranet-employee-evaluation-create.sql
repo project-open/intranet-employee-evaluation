@@ -97,16 +97,16 @@ begin
 
 	IF v_count = 0 THEN 
 		select acs_object_type__create_type (
-               'im_employee_evaluation',       -- object_type
+           'im_employee_evaluation',       -- object_type
 	       'Employee Evaluation',          -- pretty_name
 	       'Employee Evaluation',          -- pretty_plural
-	       'im_biz_object',            	-- supertype
+	       'im_biz_object',            	   -- supertype
 	       'im_employee_evaluations',      -- table_name
-               'employee_evaluation_id',  	-- id_column
-               'intranet-employee-evaluation',		-- package_name
-               'f',                    		-- abstract_p
-               '',			       -- type_extension_table
-               'im_employee_evaluation__name'   -- name_method
+		   'employee_evaluation_id',  	   -- id_column
+           'intranet-employee-evaluation',		-- package_name
+           'f',                    				-- abstract_p
+           '',			       					-- type_extension_table
+           'im_employee_evaluation__name'   	-- name_method
 	       ) into v_count;
 
 	       insert into acs_object_type_tables (object_type,table_name,id_column) values ('im_employee_evaluation', 'im_employee_evaluations', 'employee_evaluation_id');
@@ -122,10 +122,10 @@ DROP FUNCTION inline_0 ();
 create or replace function im_employee_evaluation__name(integer)
 returns varchar as $BODY$
 DECLARE
-        p_employee_evaluation_id             alias for $1;
-	v_employee_id			     integer;
-	v_name_order_id			     integer;
-        v_employee_name                      varchar;
+		p_employee_evaluation_id		alias for $1;
+		v_employee_id			     	integer;
+		v_name_order_id			     	integer;
+        v_employee_name                 varchar;
 BEGIN
 
 	-- Get Name Order
@@ -137,9 +137,8 @@ BEGIN
 	select employee_id into v_employee_id from im_employee_evaluations where employee_evaluation_id = p_employee_evaluation_id;  
 
 	-- Get name 
-        select im_name_from_user_id(v_employee_id, v_name_order_id) into v_employee_name from dual;
-
-        return v_employee_name;
+    select im_name_from_user_id(v_employee_id, v_name_order_id) into v_employee_name from dual;
+    return v_employee_name;
 
 end;$BODY$ language 'plpgsql';
 
@@ -162,25 +161,25 @@ ALTER TABLE survsimp_questions ADD CONSTRAINT survsimp_q_pres_type_ck check (pre
 
 create sequence im_employee_evaluation_processes_seq;
 create table im_employee_evaluation_processes (
-       id				integer
-					primary key,
-       name                  		varchar(100)
+       id	 			integer
+	   					primary key,
+       name       		varchar(100)
        					NOT NULL,
-       project_id			integer
-					constraint project_id_fk
-                                        references im_projects
-					NOT NULL
-					UNIQUE,
-       survey_name			varchar(100)
+       project_id		integer
+						constraint project_id_fk
+                        references im_projects
+						NOT NULL
+						UNIQUE,
+       survey_name		varchar(100)
        					NOT NULL,
-       workflow_key			varchar(50),					
+       workflow_key				varchar(50),					
        line_break_function		varchar(50),					
        validation_function		varchar(50),					
-       transition_name_printing         varchar(50),
+       transition_name_printing varchar(50),
        evaluation_year			integer
-       					NOT NULL,
-       status				varchar(50)
-					NOT NULL					
+       							NOT NULL,
+       status					varchar(50)
+								NOT NULL					
 );
 
 ALTER TABLE im_employee_evaluation_processes ADD CONSTRAINT im_employee_evaluation_processes_status_ck check (status in ('Current','Next','Finished'));
@@ -188,26 +187,26 @@ ALTER TABLE im_employee_evaluation_processes ADD CONSTRAINT im_employee_evaluati
 -- Manage Evaluations
 -- Avoid two WF cases for one EE project 
 create table im_employee_evaluations (
-           employee_evaluation_id       integer
+        employee_evaluation_id			integer
                                         primary key,
-           project_id                   integer
-	   				constraint project_id_fk
-					references im_projects,
-           employee_id                 	integer
-	   				constraint employee_id_fk
-					references im_employees,
-           supervisor_id               	integer
-					references im_employees,
-           case_id                  	integer
-	   				constraint case_id_fk
-					references wf_cases,
-	   survey_id			integer
-	                                constraint survey_id_fk
+        project_id                   	integer
+	   									constraint project_id_fk
+										references im_projects,
+        employee_id                 	integer
+	   									constraint employee_id_fk
+										references im_employees,
+        supervisor_id               	integer
+										references im_employees,
+        case_id                  		integer
+	   									constraint case_id_fk
+										references wf_cases,
+		survey_id						integer
+	                                	constraint survey_id_fk
                                         references survsimp_surveys,
-	   workflow_key			varchar(100)
-	                                constraint worflow_key_fk
+		workflow_key					varchar(100)
+	                                	constraint worflow_key_fk
                                         references wf_workflows,
-	   UNIQUE (project_id, employee_id, survey_id)
+	   									UNIQUE (project_id, employee_id, survey_id)
 );
 
 
@@ -255,14 +254,14 @@ create table im_employee_evaluation_group_questions_map (
 create sequence im_employee_evaluation_panel_group_map_seq;
 create table im_employee_evaluation_panel_group_map (
        id				integer
-					primary key,
-       survey_id			integer
-					constraint survey_id_fk
-                                        references survsimp_surveys,
-       wf_task_name                	varchar(100),
-       group_id                         integer
-                                        constraint group_id_fk
-                                        references im_employee_evaluation_groups
+						primary key,
+       survey_id		integer
+						constraint survey_id_fk
+                        references survsimp_surveys,
+       wf_task_name     varchar(100),
+       group_id         integer
+                        constraint group_id_fk
+                        references im_employee_evaluation_groups
 );
 
 
@@ -274,8 +273,8 @@ create table im_employee_evaluation_config (
            question_id                  integer
                                         constraint question_id_fk
                                         references survsimp_questions,
-           wf_role			varchar(100), 
-           wf_task_name            	varchar(100),
+           wf_role						varchar(100), 
+           wf_task_name            		varchar(100),
            read_p                    	boolean,
            write_p                    	boolean,	   
            admin_p                    	boolean
