@@ -140,6 +140,7 @@ if { !$user_is_vp_or_dir_p } {
               cc.party_id as employee_id,
               cc.first_names,
               cc.last_name,
+	      e.supervisor_id,
 	      (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
               (select im_category_from_id(e.new_sub_division_id)) as sub_division,
               (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
@@ -164,6 +165,7 @@ if { !$user_is_vp_or_dir_p } {
               cc.party_id as employee_id,
               cc.first_names,
               cc.last_name,
+              e.supervisor_id,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
               (select im_category_from_id(e.new_sub_division_id)) as sub_division,
               (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
@@ -185,6 +187,7 @@ if { !$user_is_vp_or_dir_p } {
               cc.party_id as employee_id,
               cc.first_names,
               cc.last_name,
+              e.supervisor_id,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
               (select im_category_from_id(e.new_sub_division_id)) as sub_division,
               (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
@@ -216,6 +219,7 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
 	      cc.party_id as employee_id,
      	      cc.first_names, 
 	      cc.last_name,
+              e.supervisor_id,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
               (select im_category_from_id(e.new_sub_division_id)) as sub_division,
 	      (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
@@ -310,7 +314,7 @@ db_foreach rec $main_sql {
 
     if { [im_is_user_site_wide_or_intranet_admin $current_user_id] } {
         set employee_name "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
-	set supervisor_name_html "<a href='/intranet/users/view?user_id=$employee_id'>$supervisor_name</a>"
+	set supervisor_name_html "<a href='/intranet/users/view?user_id=$supervisor_id'>$supervisor_name</a>"
     } else {
         set employee_name "$last_name, $first_names"
         set supervisor_name_html $supervisor_name
