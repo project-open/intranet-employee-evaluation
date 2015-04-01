@@ -90,11 +90,13 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
             COALESCE((select case_id from im_employee_evaluations where project_id=:project_id_next_year and employee_id = e.employee_id),0) as case_id_next_year
         from
             im_employees e,
-			cc_users cc
+	    cc_users cc
         where
-    		e.supervisor_id = :current_user_id
-			and e.employee_id = cc.user_id 
-			and cc.member_state = 'approved'
+    	    e.supervisor_id = :current_user_id
+	    and e.employee_id = cc.user_id 
+	    and cc.member_state = 'approved'
+	order by 
+	    name
     "
 
     db_foreach rec $sql {
@@ -207,21 +209,45 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
        # NEXT YEAR 
        # ####################################
 
+       ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_supervisor_upload_component Next Year: employee_id: $employee_id, employee_evaluation_id_next_year: $employee_evaluation_id_next_year"
+       ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_supervisor_upload_component case_id_next_year: $case_id_next_year"
+
+
        if { 0 != $employee_evaluation_id_next_year } {
-		   # set task_id [db_string get_task_id "select task_id from wf_tasks where case_id = :case_id_next_year and state = 'enabled'" -default 0]
-		   append html_lines "<td> [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives<br>entered"]</td>"
-		   # Button 'Print'
+
+	   set sql "
+		select 
+		    count(*)
+		from 
+		    wf_task_assignments a,
+		    wf_tasks t
+		where 
+		    a.task_id = t.task_id
+		    and a.party_id = 624
+		    and t.transition_key = 'supervisor_enter_employee_objectives'
+		    and t.state = 'enabled'
+		    and t.case_id = :case_id_next_year
+	   "
+
+	   if { [db_string get_objectives_entered_p $sql] } {
+	       append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives<br>entered"]</td>"
+	   } else {
+	       set task_id_next_year [db_string get_task_id "select task_id from wf_tasks where case_id = :case_id_next_year and state = 'enabled'" -default 0]
+	       append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='/acs-workflow/task?task_id=$task_id_next_year'\"><nobr>[lang::message::lookup "" intranet-employee-evaluation.EditObjectivesEntered "Edit"]</nobr></button></td>"
+	   }
+
+	   # Button 'Print'
            set print_link "/intranet-employee-evaluation/print-employee-evaluation?employee_evaluation_id=$employee_evaluation_id_next_year&transition_name_to_print=$transition_name_printing_next_year"
-		   
-		   if { t == $temporarily_blocked_for_supervisor_next_year } {
-			   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.AccessBlockedByEmployee "Access temporarily blocked by Employee"]</td>"
-		   } else {
-			   append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
-		   }
+	   
+	   if { t == $temporarily_blocked_for_supervisor_next_year } {
+	       append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.AccessBlockedByEmployee "Access temporarily blocked by Employee"]</td>"
+	   } else {
+	       append html_lines "<td><button style='margin-top:-10px' onclick=\"window.open('$print_link','_blank')\">[lang::message::lookup "" intranet-employee-evaluation.Print "Print"]</button></td>"
+	   }
        } else {
-		   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_next_year&employee_id=$employee_id&survey_name=$survey_name_next_year"
-		   append html_lines "<td><button class='start_next_year' href='$start_link' style='margin-top:-10px'>[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
-		   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]</td>" 
+	   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_next_year&employee_id=$employee_id&survey_name=$survey_name_next_year"
+	   append html_lines "<td><button class='start_next_year' href='$start_link' style='margin-top:-10px'>[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
+	   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]</td>" 
       }
       # Print
       append html_lines "</tr>" 
@@ -265,17 +291,17 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
 		</tr>
 		$html_lines
 	</table>
+
 	<script type='text/javascript'>
 	\$(document).ready(function() {
 	  \$('.start_next_year').click(function() {
-    	  if (confirm('Objectives for the current year can be only entered ONCE. Are you sure you want to continue?')) {
+    	  // if (confirm('Objectives for the current year can be only entered ONCE. Are you sure you want to continue?')) {
 	      var url = \$(this).attr('href');	
 	      window.location.assign(url);
-    	  }
+    	  // };
   	  });
 	});
 	</script>
-
     "
     return $html
 }
@@ -870,7 +896,7 @@ ad_proc -public im_employee_evaluation_employee_component {
                 select
                         employee_evaluation_id,
                         case_id,
-						temporarily_blocked_for_employee_p
+			temporarily_blocked_for_employee_p
                 from
                         im_employee_evaluations
                 where
@@ -950,7 +976,8 @@ ad_proc -public im_employee_evaluation_employee_component {
     set sql "
                 select
                         employee_evaluation_id,
-                        case_id
+                        case_id,
+			temporarily_blocked_for_employee_p
                 from
                         im_employee_evaluations
                 where
@@ -965,14 +992,14 @@ ad_proc -public im_employee_evaluation_employee_component {
         set case_id 0
     }
 
-    if { 0 != $employee_evaluation_id } {
-        set print_button "
+    if { 0 != $employee_evaluation_id && !$temporarily_blocked_for_employee_p } {
+	set print_button "
                 <form action='/intranet-employee-evaluation/print-employee-evaluation' method='POST' target='_blank'>
                 <input type='hidden' name= 'transition_name_to_print' value='$transition_name_printing_next_year'>
                 <input type='hidden' name= 'employee_evaluation_id' value='$employee_evaluation_id'>
                 <input type='submit' value='[lang::message::lookup "" intranet-employee-evaluation.Print Print]'>
                 </form>
-        "
+            "
 	set status [lang::message::lookup "" intranet-employee-evaluation.ObjectivesEntered "Objectives entered"]
     } else {
         set print_button "[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]"

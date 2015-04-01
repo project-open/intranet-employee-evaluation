@@ -43,7 +43,7 @@ ad_page_contract {
     { role "" }
     { group_id "" }
     { save_btn ""}
-	{ save_btn_private "" }
+    { save_btn_private "" }
     { save_and_finish_btn "" }
     { cancel_btn "" }
 
@@ -84,7 +84,8 @@ ad_page_contract {
     cancel { 
 		if { "" != $cancel_btn } {
 			ns_log NOTICE "intranet-employee-evaluation::process-response - Cancelation"
-			ad_returnredirect /intranet/
+			ad_returnredirect /intranet-employee-evaluation
+		    	ad_script_abort
 		}
     }
 
@@ -470,7 +471,6 @@ db_transaction {
 # Workflow Action
 # -----------------------------------------------------"
 
-
 # ad_return_complaint xx "survey_id: $survey_id, related_object_id $related_object_id"
 
 set sql "
@@ -486,8 +486,34 @@ set sql "
 "
 set employee_evaluation_id [db_string get_data $sql -default ""]
 
+# Handle special case that Objectives for next year have been entered
+set sql "
+        select
+                eep.status
+        from
+                im_employee_evaluation_processes eep,
+                im_employee_evaluations ee
+        where
+                ee.survey_id = :survey_id
+                and ee.project_id = eep.project_id
+                and ee.employee_id = :related_object_id
+"
+set status [db_string get_status $sql -default ""]
+
+if { "Next" == $status } {
+    if { "" != $save_and_finish_btn } {
+	set button "save_and_finish_btn"
+    } else {
+	set button "save_btn"
+    }
+    ad_returnredirect "/intranet-employee-evaluation/handle-next-year-save-action?task_id=$task_id&button=$button&employee_evaluation_id=$employee_evaluation_id"
+    ad_script_abort
+}
+
+
 set blocked_for_supervisor_sql "update im_employee_evaluations set temporarily_blocked_for_supervisor_p = :temporarily_blocked_for_supervisor_p where employee_evaluation_id = :employee_evaluation_id"
 set blocked_for_employee_sql "update im_employee_evaluations set temporarily_blocked_for_employee_p = :temporarily_blocked_for_employee_p where employee_evaluation_id = :employee_evaluation_id"
+
 
 # Close the workflow task if task_id is available
 if { "" != $task_id && "" != $save_and_finish_btn } {
@@ -523,42 +549,24 @@ if { "" != $task_id && "" != $save_and_finish_btn } {
 
 } else {
     # Save button
-    # Handle special case that Objectives for next year have been entered
-    set sql "
-	select 
-		eep.status 
-	from 
-		im_employee_evaluation_processes eep,
-		im_employee_evaluations ee
-	where 
-		ee.survey_id = :survey_id 
-		and ee.project_id = eep.project_id
-		and ee.employee_id = :related_object_id 		
-    "
-    set status [db_string get_status $sql -default ""]
-
-    if { "Next" == $status } {
-	ad_returnredirect "/intranet-employee-evaluation/handle-next-year-save-action?task_id=$task_id"	
-    } else {
-	if { "" != $save_btn_private } {
-	    # Set "private" flag
-	    if { "Employee" == $wf_role } {
-		set temporarily_blocked_for_supervisor_p TRUE
-		db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
-	    } else {
-		set temporarily_blocked_for_employee_p TRUE
-		db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql
-	    }
+     if { "" != $save_btn_private } {
+	# Set "private" flag
+	if { "Employee" == $wf_role } {
+	    set temporarily_blocked_for_supervisor_p TRUE
+	    db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
 	} else {
-	    # Remove block flag
-            if { "Employee" == $wf_role } {
-		set temporarily_blocked_for_supervisor_p FALSE
-		db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
-	    } else {
-                set temporarily_blocked_for_employee_p FALSE
-                db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql			
-	    }
+	    set temporarily_blocked_for_employee_p TRUE
+	    db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql
 	}
-	ad_returnredirect "/acs-workflow/task?task_id=$task_id"
+    } else {
+	# Remove block flag
+	if { "Employee" == $wf_role } {
+	    set temporarily_blocked_for_supervisor_p FALSE
+	    db_dml set_temporarily_blocked_for_supervisor_p $blocked_for_supervisor_sql
+	} else {
+	    set temporarily_blocked_for_employee_p FALSE
+	    db_dml set_temporarily_blocked_for_employee_p $blocked_for_employee_sql			
+	}
     }
+    ad_returnredirect "/acs-workflow/task?task_id=$task_id"
 }

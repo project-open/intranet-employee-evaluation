@@ -156,10 +156,10 @@ if {[info exists task]} {
         append tab_html_li "<li><a href=\"#ee-tabs-[expr $ctr + 1]\"><br><b>[lang::message::lookup "" intranet-employee-evaluation.SaveAndFinishStage "Save and Finish Stage"]<img src=\"/intranet/images/cleardot.gif\" alt=\"\" /></b><br><br></a></li>\n"
         append tab_html_div "\n<div id=\"ee-tabs-[expr $ctr + 1]\">\n"
         append tab_html_div "<br><br><br><br>\n"
-		append tab_html_div "<span style='color:red;font-weight:bold'>By clicking on button \"Save and Finish Stage\" you confirm that you have finished this part.<br>The workflow will move on and you will NOT be able to edit this section anymore.</span>\n"
-		append tab_html_div "<br><br>If you have not finished yet but want to leave, please save the current status by clicking on \"Save Draft\" \n"
+	append tab_html_div "<span style='color:red;font-weight:bold'>By clicking on button \"Save and Finish Stage\" you confirm that you have finished this part.<br>The workflow will move on and you will NOT be able to edit this section anymore.</span>\n"
+	append tab_html_div "<br><br>If you have not finished yet but want to leave, please save the current status by clicking on \"Save Draft\" \n"
         append tab_html_div "<br><br>\n"
-		append tab_html_div "<input type='submit' value='                    Save and Finish Stage                    ' name='save_and_finish_btn'>&nbsp;<br><br>\n"
+	append tab_html_div "<input type='submit' value='                    Save and Finish Stage                    ' name='save_and_finish_btn'>&nbsp;<br><br>\n"
         append tab_html_div "</div>\n\n"
 
 		# TABS found, build rest of TAB logic 
@@ -240,7 +240,7 @@ if {[info exists task]} {
                 			<input type='submit' value='                    Submit                    ' name='save_and_finish_btn'>&nbsp;
 				"
             } else {
-                append html "<input type='submit' value='Save' name='save_btn'>&nbsp;"
+                append html "<input type='submit' value='Save Draft' name='save_btn'>&nbsp;<input type='submit' value='Save and Finish' name='save_and_finish_btn'>&nbsp;"
             }
             append html "</td></tr></table></form>"
         }
