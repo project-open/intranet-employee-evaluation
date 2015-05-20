@@ -155,6 +155,8 @@ if { !$user_is_vp_or_dir_p } {
               cc.party_id as employee_id,
               cc.first_names,
               cc.last_name,
+	      e.supervisor_id as supervisor_id_from_db,
+	      e.l3_director_id as l3_director_id_from_db,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
               (select im_category_from_id(e.new_global_division_id)) as new_global_division,
               (select im_category_from_id(e.new_sub_division_id)) as new_sub_division,
@@ -180,6 +182,8 @@ if { !$user_is_vp_or_dir_p } {
               cc.party_id as employee_id,
               cc.first_names,
               cc.last_name,
+	      e.supervisor_id as supervisor_id_from_db,
+	      e.l3_director_id as l3_director_id_from_db,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
               (select im_category_from_id(e.new_global_division_id)) as new_global_division,
               (select im_category_from_id(e.new_sub_division_id)) as new_sub_division,
@@ -202,6 +206,8 @@ if { !$user_is_vp_or_dir_p } {
               cc.party_id as employee_id,
               cc.first_names,
               cc.last_name,
+	      e.supervisor_id as supervisor_id_from_db,
+	      e.l3_director_id as l3_director_id_from_db,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
               (select im_category_from_id(e.new_global_division_id)) as new_global_division,
               (select im_category_from_id(e.new_sub_division_id)) as new_sub_division,
@@ -234,6 +240,8 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
               cc.party_id as employee_id,
               cc.first_names,
               cc.last_name,
+	      e.supervisor_id as supervisor_id_from_db,
+	      e.l3_director_id as l3_director_id_from_db,
               (select im_name_from_user_id(e.supervisor_id,2)) as supervisor_name,
               (select im_category_from_id(e.new_sub_division_id)) as new_sub_division,
               (select im_category_from_id(e.new_global_division_id)) as new_global_division,
@@ -269,8 +277,10 @@ set html_table "
 	<table border=0 class='table_list_simple'>\n
 	<tr valign='top' class='rowtitle'>
 	<td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]</td>
+        <td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Global-Divison "Global-Division"]</td>
+        <td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Sub-Divison "Sub-Division"]</td>
+        <td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.DirectorName "Director"]</td>
 	<td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.SupervisorName "Supervisor"]</td>
-	<td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Sub-Divison "Sub-Division"]</td>
 "
 set csv_output_debug "\"\";\"\";\"\";\"\";\"\";"
 set csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]\";"
@@ -340,13 +350,17 @@ set answer_where_clause [join $question_list ","]
 set ctr 0 
 db_foreach rec $main_sql {
 
-    set employee_name "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
-    set supervisor_name_html "<a href='/intranet/users/view?user_id=$employee_id'>$supervisor_name</a>"
+    set employee_name_html "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
+    set director_name_html "<a href='/intranet/users/view?user_id=$l3_director_id_from_db'>$director_name</a>"
+    set supervisor_name_html "<a href='/intranet/users/view?user_id=$supervisor_id_from_db'>$supervisor_name</a>"
+
     append html_table "\n
         <tr>\n
-                <td valign='top'>$employee_name</td>\n
-                <td valign='top'>$supervisor_name_html</td>\n
+                <td valign='top'>$employee_name_html</td>\n
+                <td valign='top'>$new_global_division</td>\n
                 <td valign='top'>$new_sub_division</td>\n
+                <td valign='top'>$director_name_html</td>\n
+                <td valign='top'>$supervisor_name_html</td>\n
     "
     append csv_output "\"$last_name, $first_names\";\"$new_global_division\";\"$new_sub_division\";\"$director_name\";\"$supervisor_name\""
 
@@ -417,19 +431,19 @@ append html "
                 <tr>
                  <td class=form-label>[lang::message::lookup "" intranet-cust-champ.GlobalDivision "Global Division"]</td>
                  <td class=form-widget>
-                   [im_category_select -include_empty_p 1 -include_empty_name "All" "Intranet Division Department" new_global_division_id]
+                   [im_category_select -include_empty_p 1 -include_empty_name "All" "Intranet Division Department" new_global_division_id $new_global_division_id]
                 </td>
                </tr>
                <tr>
                  <td class=form-label>[lang::message::lookup "" intranet-cust-champ.SubDivision "Sub Division"]</td>
                  <td class=form-widget>
-                   [im_category_select -include_empty_p 1 -include_empty_name "All" "Intranet New Sub Division" new_sub_division_id]
+                   [im_category_select -include_empty_p 1 -include_empty_name "All" "Intranet New Sub Division" new_sub_division_id $new_sub_division_id]
                  </td>
                </tr>
                <tr>
                  <td class=form-label>[lang::message::lookup "" intranet-cust-champ.Director "Director"]</td>
                  <td class=form-widget>
-		    [im_user_select -include_empty_p 1 -include_empty_name "All" -group_id 463 l3_director_id $l3_director_id]
+		    [im_cust_champ_director_select -include_empty_p 1 -include_empty_name "All" $l3_director_id]
                  </td>
                </tr>
 		<tr>
