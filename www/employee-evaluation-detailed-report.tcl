@@ -14,7 +14,7 @@ ad_page_contract {
     { user_id 0 }
     { new_global_division_id 0 }
     { new_sub_division_id 0 }
-    { supervisor_id 0 }
+    { user_supervisor_id 0 }
     { l3_director_id 0 }
     { employee_evaluation_process_id 0 }
     { output_format "html" }
@@ -42,7 +42,6 @@ if {![string equal "t" $read_p]} {
     [lang::message::lookup "" intranet-reporting.You_dont_have_permissions "You don't have the necessary permissions to view this page"]"
     return
 }
-
 
 # ------------------------------------------------------------
 # Defaults
@@ -116,8 +115,8 @@ if { 0 != $l3_director_id && "" != $l3_director_id } {
 }
 
 # Supervisor Filter
-if { 0 != $supervisor_id && "" != $supervisor_id } {
-    lappend criteria "e.supervisor_id = :supervisor_id"
+if { 0 != $user_supervisor_id && "" != $user_supervisor_id } {
+    lappend criteria "e.supervisor_id = :user_supervisor_id"
 }
 
 # Employee Filter
@@ -266,6 +265,8 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
     "
 }
 
+# If first time request do not pull any records to avoid long loading 
+if { "" == [ns_conn query] } { set main_sql "select * from dual where 0=1" }
 
 # ------------------------------------------------------------
 # Output 
@@ -405,12 +406,20 @@ db_foreach rec $main_sql {
     append html_table "\n</tr>\n"
     set csv_output "[string replace $csv_output end end]\n" 
     incr ctr
+} if_no_rows {
+    append html_table "<tr><td colspan='99'>[lang::message::lookup "" intranet-employee-evaluation.NoRecordsFound "No records found"]</td></tr>"
 }
 
 
 # / RECORDS --------------------------------------------------------------------------------------------------
 
 append html_table "</table>"
+
+# ad_return_complaint xx [array size [array get [ns_conn form]]]
+if { "" == [ns_conn query] } {
+     set html_table "<strong>[lang::message::lookup "" intranet-employee-evaluation.NoRecordsSelectedYet "No records selected yet, please set filters and submit form"]</strong>"
+}
+
 
 set html "
 	[im_header]
@@ -419,6 +428,7 @@ set html "
 		<tr>
 			<td>
 "
+
 append html "
 	<form>
 	<table border=0 cellspacing=1 cellpadding=1>
@@ -449,7 +459,7 @@ append html "
 		<tr>
 		  <td class=form-label>[lang::message::lookup "" intranet-core.Supervisor "Supervisor"]</td>
 		  <td class=form-widget>
-		    [im_supervisor_select -include_empty_p 1 -include_empty_name "All" $supervisor_id]
+		    [im_supervisor_select -include_empty_p 1 -include_empty_name "All" $user_supervisor_id]
 		  </td>
 		</tr>
 		<tr>
