@@ -17,6 +17,7 @@ ad_page_contract {
     { user_supervisor_id 0 }
     { l3_director_id 0 }
     { employee_evaluation_process_id 0 }
+    { location_id 0 }
     { output_format "html" }
 }
 
@@ -160,7 +161,11 @@ if { !$user_is_vp_or_dir_p } {
               (select im_category_from_id(e.new_global_division_id)) as new_global_division,
               (select im_category_from_id(e.new_sub_division_id)) as new_sub_division,
               (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
-              (select im_name_from_user_id(e.l3_director_id,2)) as director_name
+              (select im_name_from_user_id(e.l3_director_id,2)) as director_name,
+	      (select im_category_from_id(e.role_function_id)) as role_function,
+	      (select im_category_from_id(e.location_id)) as location,
+              (select im_category_from_id(e.contractor_permanent_id)) as contractor_permanent,
+              (select im_category_from_id(e.employee_champ_entity_id)) as employee_champ_entity
         from
               cc_users cc,
               acs_rels r,
@@ -187,7 +192,11 @@ if { !$user_is_vp_or_dir_p } {
               (select im_category_from_id(e.new_global_division_id)) as new_global_division,
               (select im_category_from_id(e.new_sub_division_id)) as new_sub_division,
               (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
-              (select im_name_from_user_id(e.l3_director_id,2)) as director_name
+              (select im_name_from_user_id(e.l3_director_id,2)) as director_name,
+	      (select im_category_from_id(e.role_function_id)) as role_function,
+	      (select im_category_from_id(e.location_id)) as location,
+              (select im_category_from_id(e.contractor_permanent_id)) as contractor_permanent,
+              (select im_category_from_id(e.employee_champ_entity_id)) as employee_champ_entity
         from
               cc_users cc,
               im_employees e
@@ -211,7 +220,11 @@ if { !$user_is_vp_or_dir_p } {
               (select im_category_from_id(e.new_global_division_id)) as new_global_division,
               (select im_category_from_id(e.new_sub_division_id)) as new_sub_division,
               (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
-              (select im_name_from_user_id(e.l3_director_id,2)) as director_name
+              (select im_name_from_user_id(e.l3_director_id,2)) as director_name,
+	      (select im_category_from_id(e.role_function_id)) as role_function,
+	      (select im_category_from_id(e.location_id)) as location,
+              (select im_category_from_id(e.contractor_permanent_id)) as contractor_permanent,
+              (select im_category_from_id(e.employee_champ_entity_id)) as employee_champ_entity
         from
               cc_users cc,
               acs_rels r,
@@ -245,7 +258,11 @@ if { [im_is_user_site_wide_or_intranet_admin $current_user_id] || [im_user_is_hr
               (select im_category_from_id(e.new_sub_division_id)) as new_sub_division,
               (select im_category_from_id(e.new_global_division_id)) as new_global_division,
               (select im_name_from_user_id(e.l2_vp_id,2)) as vice_president_name,
-              (select im_name_from_user_id(e.l3_director_id,2)) as director_name
+              (select im_name_from_user_id(e.l3_director_id,2)) as director_name,
+	      (select im_category_from_id(e.role_function_id)) as role_function,
+	      (select im_category_from_id(e.location_id)) as location,
+              (select im_category_from_id(e.contractor_permanent_id)) as contractor_permanent,
+              (select im_category_from_id(e.employee_champ_entity_id)) as employee_champ_entity
         from
               cc_users cc,
               acs_rels r,
@@ -282,6 +299,10 @@ set html_table "
         <td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Sub-Divison "Sub-Division"]</td>
         <td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.DirectorName "Director"]</td>
 	<td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.SupervisorName "Supervisor"]</td>
+	<td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.RoleFunction "Role Function"]</td>
+	<td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Location "Location"]</td>
+	<td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.ContractPermanent "Contract/Permanent"]</td>
+	<td valign='top' class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.ChampEntity "Champ Entity"]</td>
 "
 set csv_output_debug "\"\";\"\";\"\";\"\";\"\";"
 set csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.EmployeeName "Name"]\";"
@@ -289,6 +310,10 @@ append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.Glob
 append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.Sub-Divison "Sub-Division"]\";"
 append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.DirectorName "Director"]\";"
 append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.SupervisorName "Supervisor"]\";"
+append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.RoleFunction "Role Function"]\";"
+append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.Location "Location"]\";"
+append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.ContractPermanent "Contract/Permanent"]\";"
+append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.ChampEntity "Champ Entity"]\";"
 
 
 set question_list [list]
@@ -362,8 +387,14 @@ db_foreach rec $main_sql {
                 <td valign='top'>$new_sub_division</td>\n
                 <td valign='top'>$director_name_html</td>\n
                 <td valign='top'>$supervisor_name_html</td>\n
+                <td valign='top'>$role_function</td>\n
+                <td valign='top'>$location</td>\n
+                <td valign='top'>$contractor_permanent</td>\n
+                <td valign='top'>$employee_champ_entity</td>\n
+
     "
     append csv_output "\"$last_name, $first_names\";\"$new_global_division\";\"$new_sub_division\";\"$director_name\";\"$supervisor_name\""
+    append csv_output "\"$role_function\";\"$location\";\"$contractor_permanent\";\"$employee_champ_entity\";"
 
     # Set answer array 
     # order by "r.response_id ASC" ensures that the last response found becomes the relevant response
@@ -441,7 +472,7 @@ append html "
                 <tr>
                  <td class=form-label>[lang::message::lookup "" intranet-cust-champ.GlobalDivision "Global Division"]</td>
                  <td class=form-widget>
-                   [im_category_select -include_empty_p 1 -include_empty_name "All" "Intranet Division Department" new_global_division_id $new_global_division_id]
+                   [im_category_select -include_empty_p 1 -include_empty_name "All" "Intranet New Global Division" new_global_division_id $new_global_division_id]
                 </td>
                </tr>
                <tr>
@@ -468,6 +499,13 @@ append html "
 		    [im_user_select -include_empty_p 1 -include_empty_name "All" user_id $user_id]
 		  </td>
 		</tr>
+                <tr>
+                 <td class=form-label>[lang::message::lookup "" intranet-cust-champ.Location "Location"]</td>
+                 <td class=form-widget>
+                   [im_category_select -include_empty_p 1 -include_empty_name "All" "Intranet Location" location_id $location_id]
+                </td>
+               </tr>
+
 	               <tr>
 	                 <td class=form-label>[lang::message::lookup "" intranet-reporting.Format "Format"]</td>
 	                 <td class=form-widget>
