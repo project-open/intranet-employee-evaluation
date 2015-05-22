@@ -125,6 +125,10 @@ if { 0 != $user_id && "" != $user_id } {
     lappend criteria "e.employee_id = :user_id"
 }
 
+# Location Filter
+if { 0 != $location_id && "" != $location_id } {
+    lappend criteria "e.location_id = :location_id"
+}
 
 # Put everything together
 set where_clause [join $criteria " and\n            "]
@@ -376,6 +380,8 @@ set answer_where_clause [join $question_list ","]
 set ctr 0 
 db_foreach rec $main_sql {
 
+    array set answer_arr [list]
+
     set employee_name_html "<a href='/intranet/users/view?user_id=$employee_id'>$last_name, $first_names</a>"
     set director_name_html "<a href='/intranet/users/view?user_id=$l3_director_id_from_db'>$director_name</a>"
     set supervisor_name_html "<a href='/intranet/users/view?user_id=$supervisor_id_from_db'>$supervisor_name</a>"
@@ -394,7 +400,7 @@ db_foreach rec $main_sql {
 
     "
     append csv_output "\"$last_name, $first_names\";\"$new_global_division\";\"$new_sub_division\";\"$director_name\";\"$supervisor_name\""
-    append csv_output "\"$role_function\";\"$location\";\"$contractor_permanent\";\"$employee_champ_entity\";"
+    append csv_output ";\"$role_function\";\"$location\";\"$contractor_permanent\";\"$employee_champ_entity\""
 
     # Set answer array 
     # order by "r.response_id ASC" ensures that the last response found becomes the relevant response
@@ -421,7 +427,7 @@ db_foreach rec $main_sql {
 	regsub -all {[\u0000-\u001f\u007f]+} $clob_answer "" clob_answer
 	regsub -all {[^\u0020-\u007e]+} $clob_answer "" clob_answer
 	set answer_arr($question_id) [list $clob_answer $number_answer $choice_label]
-    }
+    }  
 
     # Questions 
     foreach q $question_list {
@@ -430,13 +436,15 @@ db_foreach rec $main_sql {
 	    append csv_output ";\"[lindex $answer_arr($q) 0][lindex $answer_arr($q) 1][lindex $answer_arr($q) 2]\""
 	} else {
             append html_table "<td valign='top'>&nbsp;</td>\n"
-	    append csv_output "\"\";"
+	    append csv_output ";\"\""
 	}
     }
 
     append html_table "\n</tr>\n"
     set csv_output "[string replace $csv_output end end]\n" 
     incr ctr
+    
+    unset answer_arr
 } if_no_rows {
     append html_table "<tr><td colspan='99'>[lang::message::lookup "" intranet-employee-evaluation.NoRecordsFound "No records found"]</td></tr>"
 }
