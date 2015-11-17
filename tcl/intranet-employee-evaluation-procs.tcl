@@ -445,7 +445,7 @@ ad_proc -public create_html_combined_type_two {
 # Question Permissions 
 # -----------------------------------------------------------
 
-proc_doc im_employee_evaluation_question_permissions {
+ad_proc -public im_employee_evaluation_question_permissions {
     { -wf_task_id "" } 
     { -wf_task_name "" } 
     { -wf_role "" } 
@@ -490,7 +490,7 @@ proc_doc im_employee_evaluation_question_permissions {
 }
 
 
-proc_doc im_employee_evaluation_question_display {
+ad_proc -public im_employee_evaluation_question_display {
     question_id
     employee_id
     wf_task_name 
@@ -499,9 +499,7 @@ proc_doc im_employee_evaluation_question_display {
 } { 
     Returns a string of HTML to display for a question, suitable for embedding in a form.
     The form variable is of the form \"response_to_question.\$question_id
-    
 } {
-
     template::head::add_javascript -src "http://code.jquery.com/ui/1.8.0/jquery-ui.js" -order 9990
     template::head::add_css -href "http://code.jquery.com/ui/1.8.0/themes/smoothness/jquery-ui.css" -media "screen" -order 9980
     template::head::add_css -href "/intranet-employee-evaluation/css/intranet-employee-evaluation.css" -media "screen" -order 9900
