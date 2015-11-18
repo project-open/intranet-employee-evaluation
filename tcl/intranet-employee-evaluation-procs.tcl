@@ -146,7 +146,7 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
 
        set upload_form "
 		<form enctype='multipart/form-data' method='POST' action=/intranet-filestorage/upload-2.tcl>
-				[export_form_vars bread_crum_path folder_type object_id return_url]
+				[export_vars -form {bread_crum_path folder_type object_id return_url}]
 				<input type='file' name='upload_file' size='10'> &nbsp; <input type=submit value=\"[lang::message::lookup "" intranet-employee-evaluation.Upload "Upload"]\">
 		</form>
        "
