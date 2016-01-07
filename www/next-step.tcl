@@ -40,14 +40,20 @@ if { 0 != $task_assignee_id } {
     set from_email [parameter::get -package_id [apm_package_id_from_key acs-kernel] -parameter "SystemOwner" -default -1]
     set to_addr [db_string get_data "select email from parties where party_id = :task_assignee_id" -default ""]
     set system_url [parameter::get -package_id [apm_package_id_from_key acs-kernel] -parameter "SystemURL" -default ""]
-    acs_mail_lite::send \
-	-send_immediately \
-	-to_addr $to_addr \
-	-from_addr $from_email \
-	-subject  "Automatic notification - Employee Evaluation Workflow" \
-        -body "A workflow task has been completed. You have been assigned to next task. Please go to:\n\n <a href=\"${system_url}intranet-employee-evaluation/\">${system_url}intranet-employee-evaluation/</a>\n\n to continue." \
-	-extraheaders "" \
-	-mime_type "text/html"
+
+    if {[catch {
+	acs_mail_lite::send \
+	    -send_immediately \
+	    -to_addr $to_addr \
+	    -from_addr $from_email \
+	    -subject  "Automatic notification - Employee Evaluation Workflow" \
+	    -body "A workflow task has been completed. You have been assigned to next task. Please go to:\n\n <a href=\"${system_url}intranet-employee-evaluation/\">${system_url}intranet-employee-evaluation/</a>\n\n to continue." \
+	    -extraheaders "" \
+	    -mime_type "text/html"
+    } err_msg]} {
+	global errorInfo
+	ns_log Error "Unable to send notfication email: $errorInfo" 
+    }
 }
 
 set msg "<br><br><strong>Thanks for providing the information requested. We have informed the employee who is in charge for the next workflow task. <br>You will receive a notification when you'll be assigned to the next task for this workflow.</strong>"
