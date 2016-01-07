@@ -229,28 +229,37 @@ append html_output "
 <div class='page-break'></div>
 "
 
+
 foreach transition_key $transition_keys {
     ns_log NOTICE "intranet-ee::print-employee-evaluation - workflow_key: $workflow_key, transition_key: $transition_key" 
     set transition_name [db_string get_transition_name "select transition_name from wf_transitions where transition_key = :transition_key and workflow_key = :workflow_key" -default ""]
     ns_log NOTICE "intranet-ee::print-employee-evaluation - transition_name: $transition_name" 
     set sql "
-	select
-	      	gqm.question_id,
-		ssq.question_text		
-	from
-      		im_employee_evaluation_panel_group_map pgm,
-      		im_employee_evaluation_group_questions_map gqm,
-      		im_employee_evaluation_groups g,
-		survsimp_questions ssq
-	where
-      		gqm.group_id = g.group_id and
-      		pgm.wf_task_name = :transition_name and
-      		pgm.survey_id = :survey_id and
-      		pgm.group_id = g.group_id and 
-		ssq.question_id = gqm.question_id 
-	order by 
-		-- gqm.sort_key
-		ssq.sort_key
+            select 
+                question_id,
+                question_text
+            from 
+                (
+                    select distinct on (question_id)
+                            gqm.question_id,
+                            ssq.question_text,
+                            ssq.sort_key
+                            
+                    from
+                            im_employee_evaluation_panel_group_map pgm,
+                            im_employee_evaluation_group_questions_map gqm,
+                            im_employee_evaluation_groups g,
+                            survsimp_questions ssq
+                    where
+                            gqm.group_id = g.group_id and
+                            pgm.wf_task_name = 'STAGE 5 - DIRECTOR: Review Section 6 and Comments' and
+                            pgm.survey_id = '1264988' and
+                            pgm.group_id = g.group_id and
+                            ssq.question_id = gqm.question_id
+            ) m
+            order by 
+                    -- gqm.sort_key
+                    m.sort_key
     "
     db_foreach r $sql {
         ns_log NOTICE "intranet-ee::print-employee-evaluation - Writing question id: $question_id, employee_id: $employee_id, task_name:$transition_name"
