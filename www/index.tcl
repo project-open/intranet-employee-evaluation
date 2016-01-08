@@ -20,7 +20,7 @@ ad_page_contract {
     @param orderby the display order
     @param show_all_comments whether to show all comments
 
-    @author Frank Bergmann (frank.bergmann@project-open.com)
+    @author Klaus Hofeditz (klaus.hofeditz@project-open.com)
 } {
     { employee_evaluation_id:integer 0}
 }
@@ -31,5 +31,5 @@ ad_page_contract {
 
 set current_user_id [ad_maybe_redirect_for_registration]
 set name [im_name_from_user_id $current_user_id]
-set page_title [lang::message::lookup "" intranet-employee-evaluation.TitleIndex "Employee Evaluation"]
+set page_title [lang::message::lookup "" intranet-employee-evaluation.TitleIndex "Annual Review"]
 set return_url "/intranet-employee-evaluation/"
