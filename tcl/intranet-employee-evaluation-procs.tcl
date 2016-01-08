@@ -95,6 +95,25 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
     	    e.supervisor_id = :current_user_id
 	    and e.employee_id = cc.user_id 
 	    and cc.member_state = 'approved'
+
+	UNION 
+	select 
+            e.employee_id,
+            im_name_from_user_id(e.employee_id, :name_order) as name,
+            COALESCE((select employee_evaluation_id from im_employee_evaluations where project_id=:project_id_this_year and employee_id = e.employee_id),0) as employee_evaluation_id_this_year,
+            COALESCE((select temporarily_blocked_for_supervisor_p from im_employee_evaluations where project_id=:project_id_this_year and employee_id = e.employee_id),'f') as temporarily_blocked_for_supervisor_this_year,
+            COALESCE((select case_id from im_employee_evaluations where project_id=:project_id_this_year and employee_id = e.employee_id),0) as case_id_this_year,
+            COALESCE((select employee_evaluation_id from im_employee_evaluations where project_id=:project_id_next_year and employee_id = e.employee_id),0) as employee_evaluation_id_next_year,
+            COALESCE((select temporarily_blocked_for_supervisor_p from im_employee_evaluations where project_id=:project_id_next_year and employee_id = e.employee_id),'f') as temporarily_blocked_for_supervisor_next_year,
+            COALESCE((select case_id from im_employee_evaluations where project_id=:project_id_next_year and employee_id = e.employee_id),0) as case_id_next_year
+        from
+            im_employees e,
+            cc_users cc
+        where
+            e.l3_director_id = :current_user_id
+            and e.employee_id = cc.user_id
+            and cc.member_state = 'approved'
+
 	order by 
 	    name
     "
@@ -131,8 +150,9 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
 		   }
 		   
        } else {
-		   set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_this_year&employee_id=$employee_id&survey_name=$survey_name_this_year"
-		   append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
+		   # set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_this_year&employee_id=$employee_id&survey_name=$survey_name_this_year"
+		   # append html_lines "<td><button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button></td>"
+	   	   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotYetStarted "Not yet started"]</td>"	   
 		   append html_lines "<td>[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]</td>"
        }
 
@@ -416,7 +436,7 @@ ad_proc -public create_html_combined_type_two {
     }
 
     if { $ctr != 5 } {
-	ad_return_complaint xx  [lang::message::lookup "" intranet-employee-evaluation.Expecting5SubQuestions "Expecting 5 Sub-Questions for this quesion type but found: $ctr"]
+	ad_return_complaint 1  [lang::message::lookup "" intranet-employee-evaluation.Expecting5SubQuestions "Expecting 5 Sub-Questions for this quesion type but found: $ctr"]
     }
 
     # Build table
@@ -642,7 +662,7 @@ ad_proc -public im_employee_evaluation_question_display {
 		}
             } err_msg]} {
                 append html "Presentation type not supported, please install package \]po\[ Employee Evaluation"
-                ad_return_complaint xx $err_msg
+                ad_return_complaint 1 $err_msg
             }
         }
        "combined_type_two" {
@@ -654,7 +674,7 @@ ad_proc -public im_employee_evaluation_question_display {
 	       }
 	   } err_msg]} {
 	       append html "Presentation type not supported, please install package \]po\[ Employee Evaluation"
-                ad_return_complaint xx $err_msg
+                ad_return_complaint 1 $err_msg
 	   }
        }
         "upload_file"  {
@@ -889,6 +909,7 @@ ad_proc -public im_employee_evaluation_employee_component {
     
     set html_lines ""
 
+
     # Check if a WF had been started already
     set sql "
                 select
@@ -909,6 +930,7 @@ ad_proc -public im_employee_evaluation_employee_component {
 		set case_id 0
     }
 
+
     if {[catch {
         db_1row get_project_data "select project_name, start_date, end_date, to_char(deadline_employee_evaluation, 'YYYY-MM-DD') as deadline_employee_evaluation from im_projects where project_id = :project_id_this_year"
     } err_msg]} {
@@ -923,7 +945,14 @@ ad_proc -public im_employee_evaluation_employee_component {
     if { 0 != $current_task_id } {
         set wf_button "<button style='margin-top: -10px' onclick=\"location.href='/acs-workflow/task?task_id=$current_task_id'\">Next step</button>"
     } else {
-		set wf_button [lang::message::lookup "" intranet-employee-evaluation.NoAssignment "You are currently not assigned to a Workflow Task"]
+
+	if { 0 != $employee_evaluation_id } {
+	    set wf_button [lang::message::lookup "" intranet-employee-evaluation.NoAssignment "You are currently not assigned to a Workflow Task"]
+	} else {
+	    set survey_name_this_year [db_string sql "select survey_name from im_employee_evaluation_processes where status in ('Current')" -default ""]
+            set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_this_year&employee_id=$current_user_id&survey_name=$survey_name_this_year"
+	    set wf_button "<button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button>"
+	}
     }
 
     # Print Button 
@@ -943,6 +972,8 @@ ad_proc -public im_employee_evaluation_employee_component {
 		}
     } else {
 		set print_button "[lang::message::lookup "" intranet-employee-evaluation.NotStartedYet "Nothing to print"]"
+	        # set start_link "/intranet-employee-evaluation/workflow-start-survey?project_id=$project_id_this_year&employee_id=$employee_id&survey_name=$survey_name_this_year"
+		# set print_button "<button style='margin-top:-10px' onclick=\"location.href='$start_link'\">[lang::message::lookup "" intranet-employee-evaluation.Start "Start"]</button>"
     }
 
     append html_lines "<tr>" 
@@ -1039,7 +1070,7 @@ ad_proc -public im_employee_evaluation_employee_component {
     }
 
     append html "
-	<h3>[lang::message::lookup "" intranet-employee-evaluation.PastEvaluations "Past Evaluations"]:</h3>
+	<h3>[lang::message::lookup "" intranet-employee-evaluation.PastReviews "Past Reviews"]:</h3>
         <table border=0 class='table_list_simple'>\n
         <tr class='rowtitle'>
     "
