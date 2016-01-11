@@ -98,6 +98,7 @@ ad_page_contract {
     }
 
     check_questions -requires { survey_id:integer } {
+
 	# Validate input
         set current_user_id [ad_maybe_redirect_for_registration] 
 	if { $current_user_id == $related_object_id } {
@@ -105,6 +106,7 @@ ad_page_contract {
 	} else {
 	    set wf_role "Supervisor"
 	}
+
 
 	set question_info_list [db_list_of_lists survsimp_question_info_list {
             select
@@ -152,7 +154,7 @@ ad_page_contract {
 								  and q.question_id = gqm.question_id
 								  and gqm.group_id = :group_id
 								  and active_p = 't'
-								  and cfg.write_p = 't'
+								  -- and cfg.write_p = 't'
 								  and cfg.wf_task_name = :task_name
 								  and q.presentation_type in ('combined_type_one', 'combined_type_two')
 						      		  
@@ -175,6 +177,7 @@ ad_page_contract {
 	set description_ctr 0
 
 	ns_log NOTICE "intranet-employee-evaluation::process-response - Validating: question_info_list: $question_info_list"
+
 
 	foreach question $question_info_list { 
 
