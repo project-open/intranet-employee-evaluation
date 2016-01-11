@@ -191,11 +191,11 @@ append html_output "
 
         <tr>
                 <td valign='top'>
-			<strong>Review Plan Signatures--Appraisee</strong><br>
+			<strong>Review Plan Signatures - Appraisee</strong><br>
 			I understand my job and individual responsibilities, and my Appraiser has discussed with me the performance expectation.<br><br><br>
 		</td>
                 <td valign='top'>
-			<strong>Review Plan Signatures-Appraiser review Plan Signatures-Appraiser</strong><br>
+			<strong>Review Plan Signatures - Appraiser</strong><br>
 			I have discussed the job and individual responsibilities, performance expectations with the Appraisee.<br><br><br>
 		</td>
         </tr>
