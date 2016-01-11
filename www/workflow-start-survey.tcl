@@ -67,10 +67,10 @@ if { 0 == $survey_id  } {
 
 # Check if current user is supervisor of employee 
 set supervisor_id [db_string get_supervisor_employee "select supervisor_id from im_employees where employee_id = :employee_id" -default 0]
-if { $supervisor_id != $current_user_id } {
-    ad_return_complaint 1 [lang::message::lookup "" intranet-employee-evaluation.NotAllowed "You are not allowed to start this workflow. You are not the supervisor of this employee."]
-    ad_script_abort
-}
+# if { $supervisor_id != $current_user_id } {
+#     ad_return_complaint 1 [lang::message::lookup "" intranet-employee-evaluation.NotAllowed "You are not allowed to start this workflow. You are not the supervisor of this employee."]
+#     ad_script_abort
+# }
 
 # Check if employee is member of the EE Project 
 if { ![im_biz_object_member_p $employee_id $project_id] } {
