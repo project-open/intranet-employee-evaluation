@@ -173,31 +173,30 @@ set html_output "
 append html_output "
 <table cellpadding='5' cellspacing='5' border='0'>
 	<tr>
-        	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.Employee "Employee"]:</strong><br>$employee_name</td>
-	        <td><strong>[lang::message::lookup "" intranet-employee-evaluation.PerformancePeriod "Performance Period"]:</strong><br>$start_date_pretty - $end_date_pretty</td>
-		<td><strong>[lang::message::lookup "" intranet-employee-evaluation.DatePerformanceDialog "Date of Performance Dialog"]:</strong><br>_________________________</td>
+        	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.Appraisee "Appraisee"]:</strong><br>$employee_name</td>
+	        <td><strong>[lang::message::lookup "" intranet-employee-evaluation.Period "Period"]:</strong><br>$start_date_pretty - $end_date_pretty</td>
+		<td><strong>[lang::message::lookup "" intranet-employee-evaluation.DateAnnualReview "Date of Annual Review Dialog"]:</strong><br>_________________________</td>
 	</tr>
 		<tr><td colspan='3'>&nbsp;</td></tr>
 	<tr>
         	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.Position "Position"]:</strong><br>$employee_position</td>
         	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.Location "Location"]:</strong><br>$employee_location</td>
-        	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.EvaluatingSupervisor "Evaluating Supervisor"]:</strong><br>$supervisor_name</td>
+        	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.Appraiser "Appraiser"]:</strong><br>$supervisor_name</td>
 	<tr>
 </table>
 <table cellpadding='5' cellspacing='5' border='0'>
         <tr>
-                <td colspan='2'><h1>Section 1: Performance Plan Signatures</h1></td>
+                <td colspan='2'><h1>Review Plan Signatures</h1></td>
         </tr>
 
         <tr>
                 <td valign='top'>
-			<strong>Performance Plan Signatures--Employee</strong><br>
-			I understand my job and individual responsibilities, and my manager has discussed with me the performance expectations.<br><br><br>
+			<strong>Review Plan Signatures--Appraisee</strong><br>
+			I understand my job and individual responsibilities, and my Appraiser has discussed with me the performance expectation.<br><br><br>
 		</td>
                 <td valign='top'>
-
-			<strong>Performance Plan Signatures--Supervisor/Manager</strong><br>
-			I have discussed the job and individual responsibilities, performance expectations with the employee.<br><br><br>
+			<strong>Review Plan Signatures-Appraiser review Plan Signatures-Appraiser</strong><br>
+			I have discussed the job and individual responsibilities, performance expectations with the Appraisee.<br><br><br>
 		</td>
         </tr>
 	<tr>
@@ -210,19 +209,19 @@ append html_output "
 			<strong>Date:</strong> _________________________________<br>
                 </td>
         </tr>
+
+	<!-- 
 	<tr><td colspan='2'><br><br></td></tr>
         <tr>
                 <td colspan='2' valign='top'>
                         <strong>Overall performance:</strong> $overall_performance<br><br><br><br>
                 </td>
-                <!--
                 <td valign='top'>
                         <strong>Performance Plan Signatures--Supervisor/Manager N+1</strong><br><br>
                         <strong>Signature:</strong> _________________________________<br><br>
                         <strong>Date:</strong> _________________________________<br>
                 </td>
-                -->
-        </tr>
+        </tr>-->
 </table>
 
 
