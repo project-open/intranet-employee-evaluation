@@ -244,7 +244,7 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
 		where 
 		    a.task_id = t.task_id
 		    and a.party_id = 624
-		    and t.transition_key = 'supervisor_enter_employee_objectives'
+		    and t.transition_key = 'stage_0__appraiser_enter_appraisees_objectives'
 		    and t.state = 'enabled'
 		    and t.case_id = :case_id_next_year
 	   "
