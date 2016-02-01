@@ -91,9 +91,6 @@ if { 0 == $survey_id } {
     }
 }
 
-
-#ad_return_complaint xx "$employee_evaluation_process_id $survey_id"
-
 # ------------------------------------------------------------
 # Conditional SQL Where-Clause
 #
@@ -321,12 +318,11 @@ append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.Cham
 
 
 set question_list [list]
-
 set sql "
         select
                 gqm.question_id,
                 ssq.question_text,
-		ssq.question_text_beautified
+                ssq.question_text_beautified
         from
                 im_employee_evaluation_panel_group_map pgm,
                 im_employee_evaluation_group_questions_map gqm,
@@ -334,13 +330,13 @@ set sql "
                 survsimp_questions ssq
         where
                 gqm.group_id = g.group_id and
-                pgm.wf_task_name = 'STAGE 6 - Supervisor: Finishing' and
+                pgm.wf_task_name = (select transition_name_printing from im_employee_evaluation_processes where id = :employee_evaluation_process_id) and
                 pgm.survey_id = :survey_id and
                 pgm.group_id = g.group_id and
                 ssq.question_id = gqm.question_id
         order by
                 ssq.sort_key
-	"
+        "
 
 db_foreach r $sql {
 
@@ -379,6 +375,9 @@ set answer_where_clause [join $question_list ","]
 
 set ctr 0 
 db_foreach rec $main_sql {
+
+    ns_log Notice ""
+
 
     array set answer_arr [list]
 
