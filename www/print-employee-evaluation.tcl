@@ -161,6 +161,18 @@ if { "" != $transition_name_to_print } {
 
 # Header
 
+
+if { 2017 == $evaluation_year } {
+set html_output "
+<table cellpadding='5' cellspacing='5' border='0' width='100%'>
+        <tr>
+                <td align='left'><img src='/logo.gif' alt='' /></td>
+                <td><span style='font-size:1.5em;font-weight:bold'>CHAMP Cargosystems<br>OBJECTIVE SETTING</span></td>
+                <td align='right'><span style='font-size:4em;font-weight:bold'>$evaluation_year</span></td>
+        </tr>
+</table>"
+
+} else {
 set html_output "
 <table cellpadding='5' cellspacing='5' border='0' width='100%'>
         <tr>
@@ -169,6 +181,8 @@ set html_output "
                 <td align='right'><span style='font-size:4em;font-weight:bold'>$evaluation_year</span></td>
         </tr>
 </table>"
+
+}
 
 append html_output "
 <table cellpadding='5' cellspacing='5' border='0'>
@@ -223,7 +237,7 @@ append html_output "
                 </td>
         </tr>-->
 </table>
-
+<br/><br/>
 
 <div class='page-break'></div>
 "
