@@ -170,9 +170,65 @@ set html_output "
                 <td><span style='font-size:1.5em;font-weight:bold'>CHAMP Cargosystems<br>OBJECTIVE SETTING</span></td>
                 <td align='right'><span style='font-size:4em;font-weight:bold'>$evaluation_year</span></td>
         </tr>
-</table>"
+</table>
+<table cellpadding='5' cellspacing='5' border='0'>
+        <tr>
+                <td><strong>[lang::message::lookup "" intranet-employee-evaluation.Appraisee "Appraisee"]:</strong><br>$employee_name</td>
+                <td><strong>[lang::message::lookup "" intranet-employee-evaluation.Period "Period"]:</strong><br>$start_date_pretty - $end_date_pretty</td>
+                <td><strong>[lang::message::lookup "" intranet-employee-evaluation.DateAnnualReview "Date of objective setting"]:</strong><br>_________________________</td>
+        </tr>
+                <tr><td colspan='3'>&nbsp;</td></tr>
+        <tr>
+                <td><strong>[lang::message::lookup "" intranet-employee-evaluation.Position "Position"]:</strong><br>$employee_position</td>
+                <td><strong>[lang::message::lookup "" intranet-employee-evaluation.Location "Location"]:</strong><br>$employee_location</td>
+                <td><strong>[lang::message::lookup "" intranet-employee-evaluation.Appraiser "Appraiser"]:</strong><br>$supervisor_name</td>
+        <tr>
+</table>
+<table cellpadding='5' cellspacing='5' border='0'>
+        <tr>
+                <td colspan='2'><h1>Objective setting signatures</h1></td>
+        </tr>
+
+        <tr>
+                <td valign='top'>
+			<strong>Review Plan Signatures - Appraisee</strong><br>
+			I understand my job and individual responsibilities, and my Appraiser has discussed with me the performance expectation.<br><br><br>
+		</td>
+                <td valign='top'>
+			<strong>Review Plan Signatures - Appraiser</strong><br>
+			I have discussed the job and individual responsibilities, performance expectations with the Appraisee.<br><br><br>
+		</td>
+        </tr>
+	<tr>
+                <td valign='top'>
+                        <strong>Signature:</strong> _________________________________<br><br>
+			<strong>Date:</strong> _________________________________<br>
+                </td>
+                <td valign='top'>
+                        <strong>Signature:</strong> _________________________________<br><br>
+			<strong>Date:</strong> _________________________________<br>
+                </td>
+        </tr>
+
+	<!-- 
+	<tr><td colspan='2'><br><br></td></tr>
+        <tr>
+                <td colspan='2' valign='top'>
+                        <strong>Overall performance:</strong> $overall_performance<br><br><br><br>
+                </td>
+                <td valign='top'>
+                        <strong>Performance Plan Signatures--Supervisor/Manager N+1</strong><br><br>
+                        <strong>Signature:</strong> _________________________________<br><br>
+                        <strong>Date:</strong> _________________________________<br>
+                </td>
+        </tr>-->
+</table>
+<br/><br/>
+<div class='page-break'></div>
+"
 
 } else {
+
 set html_output "
 <table cellpadding='5' cellspacing='5' border='0' width='100%'>
         <tr>
@@ -180,11 +236,7 @@ set html_output "
                 <td><span style='font-size:1.5em;font-weight:bold'>CHAMP Cargosystems<br>PERFORMANCE REVIEW FORM</span></td>
                 <td align='right'><span style='font-size:4em;font-weight:bold'>$evaluation_year</span></td>
         </tr>
-</table>"
-
-}
-
-append html_output "
+</table>
 <table cellpadding='5' cellspacing='5' border='0'>
 	<tr>
         	<td><strong>[lang::message::lookup "" intranet-employee-evaluation.Appraisee "Appraisee"]:</strong><br>$employee_name</td>
@@ -238,8 +290,13 @@ append html_output "
         </tr>-->
 </table>
 <br/><br/>
-
 <div class='page-break'></div>
+"
+}
+
+
+append html_output "
+
 "
 
 foreach transition_key $transition_keys {
