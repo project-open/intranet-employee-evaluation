@@ -229,8 +229,8 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
        # NEXT YEAR 
        # ####################################
 
-       ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_supervisor_upload_component Next Year: employee_id: $employee_id, employee_evaluation_id_next_year: $employee_evaluation_id_next_year"
-       ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_supervisor_upload_component case_id_next_year: $case_id_next_year"
+       # ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_supervisor_upload_component Next Year: employee_id: $employee_id, employee_evaluation_id_next_year: $employee_evaluation_id_next_year"
+       # ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_supervisor_upload_component case_id_next_year: $case_id_next_year"
 
 
        if { 0 != $employee_evaluation_id_next_year } {
@@ -295,9 +295,9 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
 	<table cellpadding='5' cellspacing='5' border='0>
 		<tr class='rowtitle'>
 			<td> &nbsp;</td>
-			<td class='rowtitle' colspan='4'>$evaluation_name_this_year</td>
+			<td class='rowtitle' colspan='4'>Annual Review $evaluation_year_this_year</td>
 			<td> &nbsp;&nbsp;&nbsp;</td>
-			<td class='rowtitle' colspan='2'>$evaluation_name_next_year</td>
+			<td class='rowtitle' colspan='2'>Objectives setting $evaluation_year_next_year</td>
 		</tr>
 		<tr class='rowtitle'>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Name"]</td>
@@ -363,7 +363,7 @@ ad_proc -public create_html_combined_type_one {
 
     foreach sub_question_id $subquestion_list {
         incr ctr
-	ns_log NOTICE "intranet-employee-evaluation-procs::create_html_combined_type_one - sub_question_id: $sub_question_id"
+	# ns_log NOTICE "intranet-employee-evaluation-procs::create_html_combined_type_one - sub_question_id: $sub_question_id"
 	eval {set subquestion_html_$ctr [im_employee_evaluation_question_display $sub_question_id $employee_id $wf_task_name "" $print_p]}
     }
 
@@ -431,7 +431,7 @@ ad_proc -public create_html_combined_type_two {
 
     foreach sub_question_id $subquestion_list {
         incr ctr
-        ns_log NOTICE "intranet-employee-evaluation-procs::create_html_combined_type_one - sub_question_id: $sub_question_id"
+        # ns_log NOTICE "intranet-employee-evaluation-procs::create_html_combined_type_one - sub_question_id: $sub_question_id"
         eval {set subquestion_html_$ctr [im_employee_evaluation_question_display $sub_question_id $employee_id $wf_task_name "" $print_p]}
     }
 
@@ -498,7 +498,7 @@ ad_proc -public im_employee_evaluation_question_permissions {
 	    return
 	}
 
-	ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_permissions - question_id: $question_id, wf_task_name: $wf_task_name,  wf_role: $wf_role | $read_p $write_p $admin_p"
+	# ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_permissions - question_id: $question_id, wf_task_name: $wf_task_name,  wf_role: $wf_role | $read_p $write_p $admin_p"
 	return [list $read_p $write_p $admin_p]
 
     } else {
@@ -525,9 +525,9 @@ ad_proc -public im_employee_evaluation_question_display {
     template::head::add_css -href "/intranet-employee-evaluation/css/intranet-employee-evaluation.css" -media "screen" -order 9900
 
     set user_id [auth::get_user_id]
-    ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display"
-    ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display"
-    ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display ****** Enter -question_id: $question_id, employee_id:$employee_id, user_id: $user_id, wf_task_name: $wf_task_name"
+    # ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display"
+    # ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display"
+    # ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display ****** Enter -question_id: $question_id, employee_id:$employee_id, user_id: $user_id, wf_task_name: $wf_task_name"
 
     # Check if we have already an answer 
     set sql "
@@ -557,7 +557,7 @@ ad_proc -public im_employee_evaluation_question_display {
 
     regsub -all {t} $permission_list 1 permission_list
     regsub -all {f} $permission_list 0 permission_list
-    ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display - edit_previous_response_p: $edit_previous_response_p, permission_list: $permission_list"   
+    # ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display - edit_previous_response_p: $edit_previous_response_p, permission_list: $permission_list"   
 
     set visible_p [lindex $permission_list 0]
     set writeable_p [lindex $permission_list 1]
@@ -584,7 +584,7 @@ ad_proc -public im_employee_evaluation_question_display {
                 object_id = question_id
                 and question_id = :question_id
     "
-    ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display question_text: $question_text - visible_p: $visible_p, writeable_p: $writeable_p"
+    # ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display question_text: $question_text - visible_p: $visible_p, writeable_p: $writeable_p"
 
     set html ""
 
@@ -646,7 +646,7 @@ ad_proc -public im_employee_evaluation_question_display {
     }
 
 
-   ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display presentation_type: $presentation_type, visible_p: $visible_p, writeable_p: $writeable_p"
+   # ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display presentation_type: $presentation_type, visible_p: $visible_p, writeable_p: $writeable_p"
 
  
    switch -- $presentation_type {
@@ -767,7 +767,7 @@ ad_proc -public im_employee_evaluation_question_display {
 			set user_value [lang::message::lookup "" intranet-employee-avaluation.Empty "Not provided"]
 		    } 
                 }
-		ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display select - not boolean - user_value: $user_value"
+		# ns_log NOTICE "intranet-employee-evaluation-procs::im_employee_evaluation_question_display select - not boolean - user_value: $user_value"
                 if { $visible_p } {
 		    if { $writeable_p } {
 			append html "
@@ -983,7 +983,7 @@ ad_proc -public im_employee_evaluation_employee_component {
     append html_lines "</tr>" 
  
     set html "
-	<h3>$project_name:</h3>
+	<h3>$evaluation_year_this_year</h3>
 	<table cellpadding='5' cellspacing='5' border='0'>
 		<tr class='rowtitle'>
 			<td class='rowtitle'>[lang::message::lookup "" intranet-employee-evaluation.Status "Status"]</td>
