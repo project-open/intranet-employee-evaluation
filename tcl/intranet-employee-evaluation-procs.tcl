@@ -1178,6 +1178,7 @@ ad_proc -public im_employee_evaluation_statistics_current_project {
              wf_places p
         where
              p.place_key = s.place_key
+	     and workflow_key=:workflow_key_this_year
         order by
              p.sort_order
     "
