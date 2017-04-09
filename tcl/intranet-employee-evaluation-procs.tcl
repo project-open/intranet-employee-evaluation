@@ -196,7 +196,7 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
 
        if { [catch {
 		   # Executing the find command
-		   set file_list [exec [im_filestorage_find_cmd] $path -noleaf]
+		   set file_list [im_exec [im_filestorage_find_cmd] $path -noleaf]
 		   set files [lsort [split $file_list "\n"]]
 		   # remove the first (root path) from the list of files returned by "find".
 		   set files [lrange $files 1 [llength $files]]
