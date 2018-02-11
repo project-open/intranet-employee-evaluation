@@ -371,13 +371,9 @@ db_foreach r $sql {
     "
 
     db_foreach s $sql_inner {
-
-	# Backup
-	# if { "" == $question_text_beautified } { set question_text_beautified $question_text }
-	# if { "" == $question_text_beautified_inner } { set question_text_beautified_inner $question_text_inner }
-	if { "" == $question_text_beautified } { set question_text_beautified "($question_id)" }
-	if { "" == $question_text_beautified_inner } { set question_text_beautified_inner "($child_question_id)" }
-
+	# Debug
+	# if { "" == $question_text_beautified } { set question_text_beautified "($question_id)" }
+	# if { "" == $question_text_beautified_inner } { set question_text_beautified_inner "($child_question_id)" }
         append html_table "<td title='$child_question_id - $question_text_inner' class='rowtitle'>$question_text_beautified<br/>---<br/>$question_text_beautified_inner</td>"
         append csv_output "\"[im_report_quote_cell -encoding "" -output_format csv "$question_text_beautified -- $question_text_beautified_inner"]\";"
 	lappend question_list $child_question_id
