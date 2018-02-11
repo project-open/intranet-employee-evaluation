@@ -318,25 +318,41 @@ append csv_output "\"[lang::message::lookup "" intranet-employee-evaluation.Cham
 
 
 set question_list [list]
+
+# set sql "
+#        select
+#                gqm.question_id,
+#                ssq.question_text,
+#                ssq.question_text_beautified
+#        from
+#                im_employee_evaluation_panel_group_map pgm,
+#                im_employee_evaluation_group_questions_map gqm,
+#                im_employee_evaluation_groups g,
+#                survsimp_questions ssq
+#        where
+#                gqm.group_id = g.group_id and
+#                pgm.wf_task_name = (select transition_name_printing from im_employee_evaluation_processes where id = :employee_evaluation_process_id) and
+#                pgm.survey_id = :survey_id and
+#                pgm.group_id = g.group_id and
+#                ssq.question_id = gqm.question_id
+#        order by
+#                ssq.sort_key
+#        "
+
 set sql "
-        select
-                gqm.question_id,
-                ssq.question_text,
-                ssq.question_text_beautified
-        from
-                im_employee_evaluation_panel_group_map pgm,
-                im_employee_evaluation_group_questions_map gqm,
-                im_employee_evaluation_groups g,
-                survsimp_questions ssq
-        where
-                gqm.group_id = g.group_id and
-                pgm.wf_task_name = (select transition_name_printing from im_employee_evaluation_processes where id = :employee_evaluation_process_id) and
-                pgm.survey_id = :survey_id and
-                pgm.group_id = g.group_id and
-                ssq.question_id = gqm.question_id
-        order by
-                ssq.sort_key
-        "
+	select 
+		distinct gqm.question_id, 
+		(select question_text from survsimp_questions where question_id = gqm.question_id) as question_text,
+		(select question_text_beautified from survsimp_questions where question_id = gqm.question_id) as question_text_beautified
+	from 
+		im_employee_evaluation_panel_group_map pgm INNER JOIN im_employee_evaluation_group_questions_map gqm ON pgm.group_id = gqm.group_id 
+	where 
+		pgm.survey_id = :survey_id 
+		AND pgm.wf_task_name = (select transition_name_printing from im_employee_evaluation_processes where id = :employee_evaluation_process_id)
+	order by 
+		question_id
+"
+
 
 db_foreach r $sql {
 
@@ -353,7 +369,15 @@ db_foreach r $sql {
 		t.child_question_id = ssq_inner.question_id
 		and t.parent_question_id = :question_id
     "
+
     db_foreach s $sql_inner {
+
+	# Backup
+	# if { "" == $question_text_beautified } { set question_text_beautified $question_text }
+	# if { "" == $question_text_beautified_inner } { set question_text_beautified_inner $question_text_inner }
+	if { "" == $question_text_beautified } { set question_text_beautified "($question_id)" }
+	if { "" == $question_text_beautified_inner } { set question_text_beautified_inner "($child_question_id)" }
+
         append html_table "<td title='$child_question_id - $question_text_inner' class='rowtitle'>$question_text_beautified<br/>---<br/>$question_text_beautified_inner</td>"
         append csv_output "\"[im_report_quote_cell -encoding "" -output_format csv "$question_text_beautified -- $question_text_beautified_inner"]\";"
 	lappend question_list $child_question_id
