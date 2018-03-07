@@ -162,7 +162,7 @@ if { "" != $transition_name_to_print } {
 # Header
 
 
-if { 2017 == $evaluation_year } {
+if { "" == $evaluation_year } {
 set html_output "
 <table cellpadding='5' cellspacing='5' border='0' width='100%'>
         <tr>
