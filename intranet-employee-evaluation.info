@@ -14,16 +14,13 @@
         <summary>Allows to conduct Employee Performance Evaluations</summary>
         <release-date>2016-11-15</release-date>
         <vendor url="www.project-open.com">Project Open Business Solutions S.L.</vendor>
+	<license>]project-open[ Free License (FL)</license>
         <description format="text/html">Allows to conduct Employee Performance Evaluations</description>
-
         <maturity>0</maturity>
-
         <provides url="intranet-employee-evaluation" version="0.5d"/>
-
 	<requires url="intranet-workflow" version="4.0.3.1.0"/>
 	<requires url="simple-survey" version="0.4"/>
 	<requires url="intranet-simple-survey" version="4.0.3.1.0"/>
-
         <callbacks></callbacks>
         <parameters>
           <parameter datatype="string" min_n_values="1" max_n_values="1" name="CustomFunctionDetermineAccessPermissionToEmployeesEvaluation" default="" description="Name of function to perform a in order to determine if an employee (current user) has access to another employees 'Performance Evaluation'."/>
