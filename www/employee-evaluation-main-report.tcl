@@ -368,7 +368,7 @@ append html_table "</table>"
 
 set html "
 		[im_header]
-		[im_navbar]
+		[im_navbar reporting]
 		<table border=0 cellspacing=1 cellpadding=1>
 		<tr>
 		<td>
