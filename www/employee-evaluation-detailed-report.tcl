@@ -473,7 +473,6 @@ db_foreach rec $main_sql {
 
 append html_table "</table>"
 
-# ad_return_complaint xx [array size [array get [ns_conn form]]]
 if { "" == [ns_conn query] } {
      set html_table "<strong>[lang::message::lookup "" intranet-employee-evaluation.NoRecordsSelectedYet "No records selected yet, please set filters and submit form"]</strong>"
 }
