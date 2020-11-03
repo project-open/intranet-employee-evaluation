@@ -160,12 +160,19 @@ if {[info exists task]} {
 	append tab_html_div "<br><br>If you have not finished yet but want to leave, please save the current status by clicking on \"Save Draft\" \n"
         append tab_html_div "<br><br>\n"
 	append tab_html_div "<input type='submit' value='                    Save and Finish Stage                    ' name='save_and_finish_btn'>&nbsp;<br><br>\n"
+
+
+	set nonce_html ""
+        if {[info exists ::__csp_nonce] && "" ne $::__csp_nonce} {
+            set nonce_html "nonce=\"$::__csp_nonce\""
+        }
+
         append tab_html_div "</div>\n\n"
 
 		# TABS found, build rest of TAB logic 
 		set tab_html "<div id=\"tabs_ee\">\n\n<ul>\n$tab_html_li\n</ul>$tab_html_div\n\n</div>\n"
 		append tab_html "
-		<script>
+		<script $nonce_html>
 		\$(function() {
 	    	\$( \"\#tabs_ee\" ).tabs();
 		});
@@ -192,7 +199,7 @@ if {[info exists task]} {
 			<li style='font-seize: 80%'>Save and Finish Stage: The next 'Workflow Task' will be triggered. It's owner will be informed that you have finished your part.</li>
 		</ul>
 		-->
-		<script type='text/javascript'>
+		<script type='text/javascript' $nonce_html>
 		    \$(document).ready(function () {
 		       \$(':submit').click(function () { \$('#action_save').val(this.name); });
 		    });

@@ -272,6 +272,11 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
       # Print
       append html_lines "</tr>" 
     }
+
+    set nonce_html ""
+    if {[info exists ::__csp_nonce] && "" ne $::__csp_nonce} {
+	set nonce_html "nonce=\"$::__csp_nonce\""
+    }
  
     set html "
 	<!--[lang::message::lookup "" intranet-employee-evaluation.TitlePortletSupervisor "Please manage the Employee Performance Evaluation of your Direct Reports from here."]<br/>-->
@@ -312,7 +317,7 @@ ad_proc -public im_employee_evaluation_supervisor_upload_component {
 		$html_lines
 	</table>
 
-	<script type='text/javascript'>
+	<script type='text/javascript' $nonce_html>
 	\$(document).ready(function() {
 	  \$('.start_next_year').click(function() {
     	  // if (confirm('Objectives for the current year can be only entered ONCE. Are you sure you want to continue?')) {
