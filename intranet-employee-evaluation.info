@@ -9,7 +9,7 @@
     <inherit-templates-p>t</inherit-templates-p>
     <auto-mount>intranet-employee-evaluation</auto-mount>
 
-    <version name="5.0.3.0.0" url="http://www.project-open.net/download/apm/intranet-employee-evaluation-5.0.3.0.0.apm">
+    <version name="5.0.4.0.0" url="http://www.project-open.net/download/apm/intranet-employee-evaluation-5.0.4.0.0.apm">
         <owner url="mailto:info@project-open.com">Project Open Business Solutions S.L.</owner>
         <summary>Allows to conduct Employee Performance Evaluations</summary>
         <release-date>2016-11-15</release-date>
